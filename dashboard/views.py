@@ -1,9 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from conference.models import Conference, ReviewerPool, ReviewInvite, UserConferenceRole, Paper, Review, User, Notification, PCInvite, ConferenceAdminSettings, EmailTemplate, RegistrationApplication, SubreviewerInvite
+from conference.models import Conference, ReviewerPool, ReviewInvite, UserConferenceRole, Paper, Review, User, Notification, PCInvite, ConferenceAdminSettings, EmailTemplate, RegistrationApplication, SubreviewerInvite, Author
 from django.db.models import Count, Q
 from django.views.decorators.http import require_POST
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.urls import reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views import View
@@ -33,6 +33,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse_lazy
 from conference.models import Conference
 from conference.forms import ConferenceForm
+import zipfile
+from django.utils.text import slugify
+from io import BytesIO
 
 # Email log model for sent emails
 class PCEmailLog(models.Model):
@@ -314,12 +317,35 @@ def review_paper(request, paper_id):
 @login_required
 def chair_conference_detail(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
-    # Ensure only the chair can access and conference is approved
     if conference.chair != request.user or not conference.is_approved:
         return redirect('dashboard:dashboard')
-    
-    # Redirect to the submissions page for this conference
-    return redirect('dashboard:conference_submissions', conf_id=conf_id)
+
+    from conference.forms import ConferenceInfoForm
+    message = None
+    if request.method == 'POST':
+        form = ConferenceInfoForm(request.POST, instance=conference)
+        if form.is_valid():
+            form.save()
+            message = 'Conference information updated successfully.'
+            # Refetch the updated instance
+            conference.refresh_from_db()
+        else:
+            message = 'Please correct the errors below.'
+    else:
+        form = ConferenceInfoForm(instance=conference)
+
+    nav_items = [
+        "Submissions", "Reviews", "Status", "PC", "Events",
+        "Email", "Administration", "Conference", "News", "papersetu"
+    ]
+    context = {
+        'conference': conference,
+        'form': form,
+        'message': message,
+        'nav_items': nav_items,
+        'active_tab': 'Conference',
+    }
+    return render(request, 'dashboard/chair_conference_detail.html', context)
 
 @require_POST
 @login_required
@@ -446,83 +472,256 @@ def pc_invite(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
     if conference.chair != request.user:
         return render(request, 'dashboard/forbidden.html', {'message': 'Only the chair can invite PC members.'})
+    
     message = ''
+    message_type = 'success'
     mail_preview = None
+    
+    # Get all users except chair, already-invited, and current PC members
+    User = get_user_model()
+    invited_emails = set(PCInvite.objects.filter(conference=conference, status='pending').values_list('email', flat=True))
+    pc_member_emails = set(UserConferenceRole.objects.filter(conference=conference, role='pc_member').values_list('user__email', flat=True))
+    all_users = User.objects.exclude(id=conference.chair_id).exclude(email__in=invited_emails | pc_member_emails)
+    
     if request.method == 'POST':
-        # Bulk invite
-        if 'bulk_invite' in request.POST and request.POST['bulk_invite'].strip():
-            lines = request.POST['bulk_invite'].strip().splitlines()
-            sent_count = 0
-            for line in lines:
-                parts = [p.strip() for p in line.replace('\t', ',').split(',')]
-                if len(parts) == 2:
-                    name, email = parts
-                    if not email or not name:
-                        continue
-                    User = get_user_model()
-                    user = User.objects.filter(email=email).first()
-                    if user and UserConferenceRole.objects.filter(user=user, conference=conference, role='pc_member').exists():
-                        continue
-                    elif PCInvite.objects.filter(conference=conference, email=email, status='pending').exists():
-                        continue
-                    else:
-                        token = get_random_string(48)
-                        invite = PCInvite.objects.create(conference=conference, email=email, name=name, invited_by=request.user, token=token)
-                        invite_url = request.build_absolute_uri(reverse('dashboard:pc_invite_accept', args=[invite.token]))
-                        mail_subject = f"Invitation to join PC for {conference.name}"
-                        mail_body = f"""
-Dear {name},
-
-You have been invited to join the Program Committee (PC) for the conference '{conference.name}'.
-
-To accept the invitation, please click the following link:
-{invite_url}
-
-If you do not wish to join, you may ignore this email or click the link and decline.
-
-Best regards,
-{request.user.get_full_name()} (Chair)
-PaperSetu
-"""
-                        send_mail(mail_subject, mail_body, settings.DEFAULT_FROM_EMAIL, [email])
-                        sent_count += 1
-            message = f'Bulk invitations sent to {sent_count} users.'
-        else:
-            email = request.POST.get('email')
-            name = request.POST.get('name')
-            if not email or not name:
+        # Handle single invitation
+        if 'name' in request.POST and 'email' in request.POST:
+            name = request.POST.get('name').strip()
+            email = request.POST.get('email').strip()
+            
+            if not name or not email:
                 message = 'Name and email are required.'
+                message_type = 'error'
             else:
-                User = get_user_model()
-                user = User.objects.filter(email=email).first()
-                if user and UserConferenceRole.objects.filter(user=user, conference=conference, role='pc_member').exists():
-                    message = 'User is already a PC member.'
-                elif PCInvite.objects.filter(conference=conference, email=email, status='pending').exists():
-                    message = 'Invitation already sent.'
+                # Check if already invited or PC member
+                if email in invited_emails:
+                    message = f'{email} has already been invited.'
+                    message_type = 'error'
+                elif email in pc_member_emails:
+                    message = f'{email} is already a PC member.'
+                    message_type = 'error'
                 else:
+                    # Create invitation
                     token = get_random_string(48)
-                    invite = PCInvite.objects.create(conference=conference, email=email, name=name, invited_by=request.user, token=token)
-                    invite_url = request.build_absolute_uri(reverse('dashboard:pc_invite_accept', args=[invite.token]))
-                    mail_subject = f"Invitation to join PC for {conference.name}"
-                    mail_body = f"""
-Dear {name},
+                    invite = PCInvite.objects.create(
+                        conference=conference,
+                        name=name,
+                        email=email,
+                        invited_by=request.user,
+                        token=token
+                    )
+                    
+                    # Send email
+                    subject = f"PC Invitation for {conference.name}"
+                    body = f"""Dear {name},
 
-You have been invited to join the Program Committee (PC) for the conference '{conference.name}'.
+You have been invited to serve as a Program Committee (PC) member for the conference "{conference.name}".
 
-To accept the invitation, please click the following link:
-{invite_url}
-
-If you do not wish to join, you may ignore this email or click the link and decline.
+Please click the following link to accept or decline this invitation:
+{request.build_absolute_uri(reverse('dashboard:pc_invite_accept', args=[token]))}
 
 Best regards,
-{request.user.get_full_name()} (Chair)
-PaperSetu
-"""
-                    send_mail(mail_subject, mail_body, settings.DEFAULT_FROM_EMAIL, [email])
-                    message = 'Invitation sent.'
-                    mail_preview = {'subject': mail_subject, 'body': mail_body}
+{request.user.get_full_name() or request.user.username}
+Conference Chair"""
+                    
+                    # Use DEFAULT_FROM_EMAIL or fallback to EMAIL_HOST_USER
+                    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', settings.EMAIL_HOST_USER)
+                    
+                    try:
+                        # Try using EmailMessage first
+                        from django.core.mail import EmailMessage
+                        email_msg = EmailMessage(
+                            subject=subject,
+                            body=body,
+                            from_email=from_email,
+                            to=[email],
+                        )
+                        email_msg.send(fail_silently=False)
+                        message = f'Invitation sent successfully to {name} ({email}).'
+                        message_type = 'success'
+                    except Exception as e:
+                        error_msg = str(e)
+                        if 'SSL' in error_msg or 'CERTIFICATE' in error_msg:
+                            # Try alternative approach for SSL issues
+                            try:
+                                import smtplib
+                                from email.mime.text import MIMEText
+                                from email.mime.multipart import MIMEMultipart
+                                
+                                msg = MIMEMultipart()
+                                msg['From'] = from_email
+                                msg['To'] = email
+                                msg['Subject'] = subject
+                                msg.attach(MIMEText(body, 'plain'))
+                                
+                                server = smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT)
+                                server.starttls()
+                                server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+                                server.send_message(msg)
+                                server.quit()
+                                
+                                message = f'Invitation sent successfully to {name} ({email}).'
+                                message_type = 'success'
+                            except Exception as ssl_error:
+                                message = f'SSL Certificate error: {ssl_error}. Please check email configuration or use console backend for development.'
+                                message_type = 'error'
+                                invite.delete()
+                        elif 'DEFAULT_FROM_EMAIL' in error_msg:
+                            message = f'Email configuration error: Please check DEFAULT_FROM_EMAIL setting.'
+                            message_type = 'error'
+                            invite.delete()
+                        elif 'SMTP' in error_msg or 'authentication' in error_msg.lower():
+                            message = f'Email server error: Please check email credentials and SMTP settings.'
+                            message_type = 'error'
+                            invite.delete()
+                        else:
+                            message = f'Failed to send email to {email}: {error_msg}'
+                            message_type = 'error'
+                            invite.delete()
+        
+        # Handle bulk invitations
+        elif 'bulk_invite' in request.POST:
+            bulk_text = request.POST.get('bulk_invite').strip()
+            if not bulk_text:
+                message = 'Please provide users to invite.'
+                message_type = 'error'
+            else:
+                lines = [line.strip() for line in bulk_text.split('\n') if line.strip()]
+                success_count = 0
+                error_count = 0
+                error_messages = []
+                
+                for line in lines:
+                    parts = [part.strip() for part in line.split(',')]
+                    if len(parts) >= 2:
+                        name = parts[0]
+                        email = parts[1]
+                        
+                        # Validate email format
+                        if '@' not in email:
+                            error_messages.append(f'Invalid email format for {name}: {email}')
+                            error_count += 1
+                            continue
+                        
+                        # Check if already invited or PC member
+                        if email in invited_emails:
+                            error_messages.append(f'{email} has already been invited.')
+                            error_count += 1
+                            continue
+                        elif email in pc_member_emails:
+                            error_messages.append(f'{email} is already a PC member.')
+                            error_count += 1
+                            continue
+                        
+                        # Create invitation
+                        token = get_random_string(48)
+                        invite = PCInvite.objects.create(
+                            conference=conference,
+                            name=name,
+                            email=email,
+                            invited_by=request.user,
+                            token=token
+                        )
+                        
+                        # Send email
+                        subject = f"PC Invitation for {conference.name}"
+                        body = f"""Dear {name},
+
+You have been invited to serve as a Program Committee (PC) member for the conference "{conference.name}".
+
+Please click the following link to accept or decline this invitation:
+{request.build_absolute_uri(reverse('dashboard:pc_invite_accept', args=[token]))}
+
+Best regards,
+{request.user.get_full_name() or request.user.username}
+Conference Chair"""
+                        
+                        try:
+                            # Try using EmailMessage first
+                            from django.core.mail import EmailMessage
+                            email_msg = EmailMessage(
+                                subject=subject,
+                                body=body,
+                                from_email=settings.DEFAULT_FROM_EMAIL,
+                                to=[email],
+                            )
+                            email_msg.send(fail_silently=False)
+                            success_count += 1
+                        except Exception as e:
+                            error_msg = str(e)
+                            if 'SSL' in error_msg or 'CERTIFICATE' in error_msg:
+                                # Try alternative approach for SSL issues
+                                try:
+                                    import smtplib
+                                    from email.mime.text import MIMEText
+                                    from email.mime.multipart import MIMEMultipart
+                                    
+                                    msg = MIMEMultipart()
+                                    msg['From'] = settings.DEFAULT_FROM_EMAIL
+                                    msg['To'] = email
+                                    msg['Subject'] = subject
+                                    msg.attach(MIMEText(body, 'plain'))
+                                    
+                                    server = smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT)
+                                    server.starttls()
+                                    server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+                                    server.send_message(msg)
+                                    server.quit()
+                                    
+                                    success_count += 1
+                                except Exception as ssl_error:
+                                    error_messages.append(f'SSL Certificate error for {email}: {ssl_error}. Please check email configuration or use console backend for development.')
+                                    error_count += 1
+                                    invite.delete()
+                            elif 'DEFAULT_FROM_EMAIL' in error_msg:
+                                error_messages.append(f'Email configuration error for {email}: Please check DEFAULT_FROM_EMAIL setting.')
+                                error_count += 1
+                                invite.delete()
+                            elif 'SMTP' in error_msg or 'authentication' in error_msg.lower():
+                                error_messages.append(f'Email server error for {email}: Please check email credentials and SMTP settings.')
+                                error_count += 1
+                                invite.delete()
+                            else:
+                                error_messages.append(f'Failed to send email to {email}: {error_msg}')
+                                error_count += 1
+                                invite.delete()
+                    else:
+                        error_messages.append(f'Invalid format: {line} (expected: Name, Email)')
+                        error_count += 1
+                
+                # Prepare summary message
+                if success_count > 0 and error_count == 0:
+                    message = f'Successfully sent {success_count} invitation(s).'
+                    message_type = 'success'
+                elif success_count > 0 and error_count > 0:
+                    message = f'Successfully sent {success_count} invitation(s). {error_count} failed.'
+                    message_type = 'warning'
+                else:
+                    message = f'Failed to send any invitations. {error_count} error(s).'
+                    message_type = 'error'
+                
+                # Add error details if any
+                if error_messages:
+                    message += '\n\nErrors:\n' + '\n'.join(error_messages[:5])  # Show first 5 errors
+                    if len(error_messages) > 5:
+                        message += f'\n... and {len(error_messages) - 5} more errors.'
+    
+    # Get all invites for display
     invites = PCInvite.objects.filter(conference=conference).order_by('-sent_at')
-    context = {'conference': conference, 'message': message, 'mail_preview': mail_preview, 'invites': invites}
+    
+    # Update the user list to exclude newly invited users
+    invited_emails = set(PCInvite.objects.filter(conference=conference, status='pending').values_list('email', flat=True))
+    pc_member_emails = set(UserConferenceRole.objects.filter(conference=conference, role='pc_member').values_list('user__email', flat=True))
+    all_users = User.objects.exclude(id=conference.chair_id).exclude(email__in=invited_emails | pc_member_emails)
+    
+    context = {
+        'conference': conference, 
+        'message': message, 
+        'message_type': message_type,
+        'mail_preview': mail_preview, 
+        'invites': invites, 
+        'all_users': all_users
+    }
     return render(request, 'dashboard/pc_invite.html', context)
 
 def pc_invite_accept(request, token):
@@ -835,121 +1034,44 @@ def conference_configuration(request, conf_id):
     """
     conference = get_object_or_404(Conference, id=conf_id)
     user = request.user
-    
+
     # Ensure only the chair can access the configuration panel
     if conference.chair != user:
         return render(request, 'dashboard/forbidden.html', {
             'message': 'Only the conference chair can access the configuration panel.'
         })
-    
-    # Initialize forms with current conference data
-    forms_data = {
-        'conference_info': ConferenceInfoForm(instance=conference),
-        'submission_settings': SubmissionSettingsForm(instance=conference),
-        'reviewing_settings': ReviewingSettingsForm(instance=conference),
-        'rebuttal_settings': RebuttalSettingsForm(instance=conference),
-        'decision_settings': DecisionSettingsForm(instance=conference),
-    }
-    
-    # Get or create email templates
-    email_templates = {}
-    email_template_forms = {}
-    default_templates = EmailTemplate.get_default_templates()
-    
-    for template_type, _ in EmailTemplate.TEMPLATE_TYPES:
-        try:
-            template = EmailTemplate.objects.get(conference=conference, template_type=template_type)
-        except EmailTemplate.DoesNotExist:
-            # Create default template if it doesn't exist
-            default_data = default_templates.get(template_type, {
-                'subject': f'{template_type.replace("_", " ").title()} - {conference.name}',
-                'body': f'Default {template_type.replace("_", " ")} template for {conference.name}.'
-            })
-            template = EmailTemplate.objects.create(
-                conference=conference,
-                template_type=template_type,
-                subject=default_data['subject'],
-                body=default_data['body']
-            )
-        
-        email_templates[template_type] = template
-        email_template_forms[template_type] = EmailTemplateForm(instance=template)
-    
-    if request.method == 'POST':
-        section = request.POST.get('section')
-        
-        if section == 'conference_info':
-            form = ConferenceInfoForm(request.POST, instance=conference)
-            if form.is_valid():
-                form.save()
-                messages.success(request, 'Conference information updated successfully.')
-                return redirect('dashboard:conference_configuration', conf_id=conf_id)
-            else:
-                forms_data['conference_info'] = form
-        
-        elif section == 'submission_settings':
-            form = SubmissionSettingsForm(request.POST, instance=conference)
-            if form.is_valid():
-                form.save()
-                messages.success(request, 'Submission settings updated successfully.')
-                return redirect('dashboard:conference_configuration', conf_id=conf_id)
-            else:
-                forms_data['submission_settings'] = form
-        
-        elif section == 'reviewing_settings':
-            form = ReviewingSettingsForm(request.POST, instance=conference)
-            if form.is_valid():
-                form.save()
-                messages.success(request, 'Reviewing settings updated successfully.')
-                return redirect('dashboard:conference_configuration', conf_id=conf_id)
-            else:
-                forms_data['reviewing_settings'] = form
-        
-        elif section == 'rebuttal_settings':
-            form = RebuttalSettingsForm(request.POST, instance=conference)
-            if form.is_valid():
-                form.save()
-                messages.success(request, 'Rebuttal settings updated successfully.')
-                return redirect('dashboard:conference_configuration', conf_id=conf_id)
-            else:
-                forms_data['rebuttal_settings'] = form
-        
-        elif section == 'decision_settings':
-            form = DecisionSettingsForm(request.POST, instance=conference)
-            if form.is_valid():
-                form.save()
-                messages.success(request, 'Decision settings updated successfully.')
-                return redirect('dashboard:conference_configuration', conf_id=conf_id)
-            else:
-                forms_data['decision_settings'] = form
-        
-        elif section == 'email_template':
-            template_type = request.POST.get('template_type')
-            if template_type and template_type in email_templates:
-                template = email_templates[template_type]
-                form = EmailTemplateForm(request.POST, instance=template)
-                if form.is_valid():
-                    form.save()
-                    messages.success(request, f'{template.get_template_type_display()} template updated successfully.')
-                    return redirect('dashboard:conference_configuration', conf_id=conf_id)
-                else:
-                    email_template_forms[template_type] = form
-    
+
+    edit_section = request.GET.get('edit')
+    message = None
+    forms_data = {}
+
+    # Handle Conference Info edit POST
+    if request.method == 'POST' and request.POST.get('section') == 'conference_info':
+        form = ConferenceInfoForm(request.POST, instance=conference)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Conference information updated successfully.')
+            return redirect('dashboard:conference_configuration', conf_id=conf_id)
+        else:
+            forms_data['conference_info'] = form
+            edit_section = 'info'
+    else:
+        forms_data['conference_info'] = ConferenceInfoForm(instance=conference)
+
     # Navigation items for the conference
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
         "Email", "Administration", "Conference", "News", "papersetu"
     ]
-    
+
     context = {
         'conference': conference,
         'forms': forms_data,
-        'email_templates': email_templates,
-        'email_template_forms': email_template_forms,
+        'edit_section': edit_section,
         'nav_items': nav_items,
-        'active_tab': 'Conference',
+        'active_tab': 'Administration',
     }
-    
+
     return render(request, 'dashboard/conference_configuration.html', context)
 
 @login_required
@@ -1912,6 +2034,7 @@ def delete_review(request, conf_id):
         'review_dropdown_items': review_dropdown_items,
     })
 
+@login_required
 def send_to_authors(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
     nav_items = [
@@ -1930,12 +2053,72 @@ def send_to_authors(request, conf_id):
         {'label': 'Send to authors', 'url': reverse('dashboard:send_to_authors', args=[conference.id])},
         {'label': 'Missing reviews', 'url': reverse('dashboard:missing_reviews', args=[conference.id])},
     ]
+
+    # Fetch all submissions for this conference
+    papers = Paper.objects.filter(conference=conference).select_related('author').order_by('id')
+    submissions = []
+    for paper in papers:
+        submissions.append({
+            'id': paper.id,
+            'title': paper.title,
+            'decision': paper.status.upper(),
+            'author_name': paper.author.get_full_name() or paper.author.username,
+            'author_email': paper.author.email,
+            'detail_url': reverse('dashboard:view_paper_submission', args=[conference.id, paper.id]),
+        })
+
+    # Handle POST: send email to selected authors
+    if request.method == 'POST':
+        from django.core.mail import EmailMessage
+        subject = request.POST.get('subject', '')
+        message = request.POST.get('message', '')
+        send_all = request.POST.get('send_all_authors') == 'on'
+        selected_paper_ids = request.POST.getlist('selected_papers')
+        # Get selected authors
+        selected_authors = []
+        for sub in submissions:
+            if str(sub['id']) in selected_paper_ids:
+                selected_authors.append({'name': sub['author_name'], 'email': sub['author_email']})
+        # Remove duplicates
+        seen_emails = set()
+        unique_authors = []
+        for a in selected_authors:
+            if a['email'] not in seen_emails:
+                unique_authors.append(a)
+                seen_emails.add(a['email'])
+        # Handle attachment
+        attachment = request.FILES.get('attachment')
+        # Send email to each author
+        for author in unique_authors:
+            personalized_message = message.replace('{*NAME*}', author['name'])
+            email = EmailMessage(
+                subject=subject,
+                body=personalized_message,
+                to=[author['email']],
+            )
+            if attachment:
+                email.attach(attachment.name, attachment.read(), attachment.content_type)
+            email.send(fail_silently=False)
+        # Show popup and redirect
+        author_names = ', '.join([a['name'] for a in unique_authors]) or 'No authors selected'
+        return render(request, 'dashboard/send_to_authors.html', {
+            'conf_id': conf_id,
+            'conference': conference,
+            'nav_items': nav_items,
+            'active_tab': active_tab,
+            'review_dropdown_items': review_dropdown_items,
+            'submissions': submissions,
+            'show_popup': True,
+            'popup_names': author_names,
+        })
+
     return render(request, 'dashboard/send_to_authors.html', {
         'conf_id': conf_id,
         'conference': conference,
         'nav_items': nav_items,
         'active_tab': active_tab,
         'review_dropdown_items': review_dropdown_items,
+        'submissions': submissions,
     })
 
 def missing_reviews(request, conf_id):
@@ -2154,7 +2337,7 @@ def read_news(request):
     return render(request, 'dashboard/read_news.html', {'news_items': news_items})
 
 @login_required
-def settings(request):
+def user_settings(request):
     # Placeholder: Add user settings logic here
     return render(request, 'dashboard/settings.html', {'user': request.user})
 
@@ -2231,3 +2414,546 @@ def pc_subreviewers(request, conf_id):
         'message_type': message_type,
     }
     return render(request, 'dashboard/pc_subreviewers.html', context)
+
+@login_required
+def delete_submissions(request, conf_id):
+    conference = Conference.objects.get(id=conf_id)
+    if conference.chair != request.user:
+        return render(request, 'dashboard/forbidden.html', {'message': 'Only the conference chair can access this feature.'})
+    
+    # Get all papers for this conference
+    papers = Paper.objects.filter(conference=conference).select_related('author')
+    
+    # Create a map to group authors by email
+    author_map = {}
+    
+    # Add main authors from Paper.author
+    for paper in papers:
+        main_author = paper.author
+        email = main_author.email
+        name = f"{main_author.first_name} {main_author.last_name}" if main_author.first_name and main_author.last_name else main_author.username
+        
+        if email not in author_map:
+            author_map[email] = {
+                'name': name,
+                'email': email,
+                'country': getattr(main_author, 'country_region', 'N/A'),
+                'affiliation': getattr(main_author, 'affiliation', 'N/A'),
+                'papers': []
+            }
+        author_map[email]['papers'].append(paper)
+    
+    # Add additional authors from Author model
+    additional_authors = Author.objects.filter(paper__conference=conference).select_related('paper')
+    for author in additional_authors:
+        email = author.email
+        name = f"{author.first_name} {author.last_name}"
+        
+        if email not in author_map:
+            author_map[email] = {
+                'name': name,
+                'email': email,
+                'country': author.country_region,
+                'affiliation': author.affiliation,
+                'papers': []
+            }
+        author_map[email]['papers'].append(author.paper)
+    
+    # Convert to list and add submission count
+    author_list = []
+    for email, data in author_map.items():
+        # Remove duplicate papers
+        unique_papers = list(set(data['papers']))
+        author_list.append({
+            'name': data['name'],
+            'email': email,
+            'country': data['country'],
+            'affiliation': data['affiliation'],
+            'papers': unique_papers,
+            'submission_count': len(unique_papers),
+        })
+    
+    if request.method == 'POST':
+        selected_emails = request.POST.getlist('selected_authors')
+        # Delete all papers by these authors for this conference
+        for email in selected_emails:
+            # Delete papers where main author matches
+            Paper.objects.filter(conference=conference, author__email=email).delete()
+            # Delete papers where additional author matches
+            author_papers = Author.objects.filter(email=email, paper__conference=conference).values_list('paper_id', flat=True)
+            Paper.objects.filter(id__in=author_papers, conference=conference).delete()
+        return redirect('dashboard:delete_submissions', conf_id=conf_id)
+    
+    return render(request, 'dashboard/delete_submissions.html', {
+        'conference': conference,
+        'author_list': author_list,
+    })
+
+@login_required
+def authors_list(request, conf_id):
+    conference = Conference.objects.get(id=conf_id)
+    if conference.chair != request.user:
+        return render(request, 'dashboard/forbidden.html', {'message': 'Only the conference chair can access this feature.'})
+    
+    # Get all papers for this conference
+    papers = Paper.objects.filter(conference=conference).select_related('author')
+    
+    # Create a map to group authors by email
+    author_map = {}
+    
+    # Add main authors from Paper.author
+    for paper in papers:
+        main_author = paper.author
+        email = main_author.email
+        name = f"{main_author.first_name} {main_author.last_name}" if main_author.first_name and main_author.last_name else main_author.username
+        
+        if email not in author_map:
+            author_map[email] = {
+                'name': name,
+                'email': email,
+                'country': getattr(main_author, 'country_region', 'N/A'),
+                'affiliation': getattr(main_author, 'affiliation', 'N/A'),
+                'papers': []
+            }
+        author_map[email]['papers'].append(paper)
+    
+    # Add additional authors from Author model
+    additional_authors = Author.objects.filter(paper__conference=conference).select_related('paper')
+    for author in additional_authors:
+        email = author.email
+        name = f"{author.first_name} {author.last_name}"
+        
+        if email not in author_map:
+            author_map[email] = {
+                'name': name,
+                'email': email,
+                'country': author.country_region,
+                'affiliation': author.affiliation,
+                'papers': []
+            }
+        author_map[email]['papers'].append(author.paper)
+    
+    # Convert to list and add submission count
+    author_list = []
+    for email, data in author_map.items():
+        # Remove duplicate papers
+        unique_papers = list(set(data['papers']))
+        author_list.append({
+            'name': data['name'],
+            'email': email,
+            'country': data['country'],
+            'affiliation': data['affiliation'],
+            'papers': unique_papers,
+            'submission_count': len(unique_papers),
+        })
+    
+    return render(request, 'dashboard/authors_list.html', {
+        'conference': conference,
+        'author_list': author_list,
+    })
+
+@login_required
+def authors_list_table(request, conf_id):
+    conference = Conference.objects.get(id=conf_id)
+    if conference.chair != request.user:
+        return render(request, 'dashboard/forbidden.html', {'message': 'Only the conference chair can access this feature.'})
+    
+    search = request.GET.get('search', '').strip().lower()
+    
+    # Get all papers for this conference
+    papers = Paper.objects.filter(conference=conference).select_related('author')
+    
+    # Create a map to group authors by email
+    author_map = {}
+    
+    # Add main authors from Paper.author
+    for paper in papers:
+        main_author = paper.author
+        email = main_author.email
+        name = f"{main_author.first_name} {main_author.last_name}" if main_author.first_name and main_author.last_name else main_author.username
+        
+        if email not in author_map:
+            author_map[email] = {
+                'name': name,
+                'email': email,
+                'country': getattr(main_author, 'country_region', 'N/A'),
+                'affiliation': getattr(main_author, 'affiliation', 'N/A'),
+                'papers': []
+            }
+        author_map[email]['papers'].append(paper)
+    
+    # Add additional authors from Author model
+    additional_authors = Author.objects.filter(paper__conference=conference).select_related('paper')
+    for author in additional_authors:
+        email = author.email
+        name = f"{author.first_name} {author.last_name}"
+        
+        if email not in author_map:
+            author_map[email] = {
+                'name': name,
+                'email': email,
+                'country': author.country_region,
+                'affiliation': author.affiliation,
+                'papers': []
+            }
+        author_map[email]['papers'].append(author.paper)
+    
+    # Convert to list, filter by search, and add submission count
+    author_list = []
+    for email, data in author_map.items():
+        # Filter by search
+        if search and search not in data['name'].lower() and search not in email.lower():
+            continue
+            
+        # Remove duplicate papers
+        unique_papers = list(set(data['papers']))
+        author_list.append({
+            'name': data['name'],
+            'email': email,
+            'country': data['country'],
+            'affiliation': data['affiliation'],
+            'papers': unique_papers,
+            'submission_count': len(unique_papers),
+        })
+    
+    return render(request, 'dashboard/partials/authors_table_body.html', {'author_list': author_list})
+
+@login_required
+def delete_submissions_table(request, conf_id):
+    conference = Conference.objects.get(id=conf_id)
+    if conference.chair != request.user:
+        return render(request, 'dashboard/forbidden.html', {'message': 'Only the conference chair can access this feature.'})
+    
+    search = request.GET.get('search', '').strip().lower()
+    
+    # Get all papers for this conference
+    papers = Paper.objects.filter(conference=conference).select_related('author')
+    
+    # Create a map to group authors by email
+    author_map = {}
+    
+    # Add main authors from Paper.author
+    for paper in papers:
+        main_author = paper.author
+        email = main_author.email
+        name = f"{main_author.first_name} {main_author.last_name}" if main_author.first_name and main_author.last_name else main_author.username
+        
+        if email not in author_map:
+            author_map[email] = {
+                'name': name,
+                'email': email,
+                'country': getattr(main_author, 'country_region', 'N/A'),
+                'affiliation': getattr(main_author, 'affiliation', 'N/A'),
+                'papers': []
+            }
+        author_map[email]['papers'].append(paper)
+    
+    # Add additional authors from Author model
+    additional_authors = Author.objects.filter(paper__conference=conference).select_related('paper')
+    for author in additional_authors:
+        email = author.email
+        name = f"{author.first_name} {author.last_name}"
+        
+        if email not in author_map:
+            author_map[email] = {
+                'name': name,
+                'email': email,
+                'country': author.country_region,
+                'affiliation': author.affiliation,
+                'papers': []
+            }
+        author_map[email]['papers'].append(author.paper)
+    
+    # Convert to list, filter by search, and add submission count
+    author_list = []
+    for email, data in author_map.items():
+        # Filter by search
+        if search and search not in data['name'].lower() and search not in email.lower():
+            continue
+            
+        # Remove duplicate papers
+        unique_papers = list(set(data['papers']))
+        author_list.append({
+            'name': data['name'],
+            'email': email,
+            'country': data['country'],
+            'affiliation': data['affiliation'],
+            'papers': unique_papers,
+            'submission_count': len(unique_papers),
+        })
+    
+    return render(request, 'dashboard/partials/delete_submissions_table_body.html', {'author_list': author_list})
+
+@login_required
+def download_submissions(request, conf_id):
+    conference = Conference.objects.get(id=conf_id)
+    papers = Paper.objects.filter(conference=conference)
+    # Create a zip in memory
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+        for paper in papers:
+            if paper.file:
+                filename = f"{slugify(paper.title)}_{paper.id}{os.path.splitext(paper.file.name)[-1]}"
+                file_path = paper.file.path
+                if os.path.exists(file_path):
+                    with open(file_path, 'rb') as f:
+                        zip_file.writestr(filename, f.read())
+    zip_buffer.seek(0)
+    response = HttpResponse(zip_buffer, content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="{slugify(conference.name)}_submissions.zip"'
+    return response
+
+@login_required
+def view_paper_submission(request, conf_id, submission_id):
+    """
+    View detailed information about a specific paper submission.
+    Only accessible by the conference chair.
+    """
+    conference = get_object_or_404(Conference, id=conf_id)
+    paper = get_object_or_404(Paper, id=submission_id, conference=conference)
+    
+    # Ensure only the chair can access
+    if conference.chair != request.user:
+        return render(request, 'dashboard/forbidden.html', {
+            'message': 'Only the conference chair can view paper details.'
+        })
+    
+    # Get all authors for this paper (main author + additional authors)
+    authors = []
+    
+    # Add main author
+    main_author = paper.author
+    authors.append({
+        'first_name': main_author.first_name or '',
+        'last_name': main_author.last_name or '',
+        'email': main_author.email,
+        'country': getattr(main_author, 'country_region', 'N/A'),
+        'affiliation': getattr(main_author, 'affiliation', 'N/A'),
+        'web_page': getattr(main_author, 'web_page', ''),
+        'is_corresponding': True,  # Main author is typically corresponding
+    })
+    
+    # Add additional authors from Author model
+    additional_authors = Author.objects.filter(paper=paper)
+    for author in additional_authors:
+        authors.append({
+            'first_name': author.first_name,
+            'last_name': author.last_name,
+            'email': author.email,
+            'country': author.country_region,
+            'affiliation': author.affiliation,
+            'web_page': author.web_page,
+            'is_corresponding': author.is_corresponding,
+        })
+    
+    # Get reviews for this paper
+    reviews = Review.objects.filter(paper=paper).select_related('reviewer')
+    review_stats = {
+        'total': reviews.count(),
+        'accepted': reviews.filter(decision='accept').count(),
+        'rejected': reviews.filter(decision='reject').count(),
+        'pending': reviews.filter(decision__isnull=True).count(),
+    }
+    
+    # Get subreviewer invites for this paper
+    subreviewer_invites = SubreviewerInvite.objects.filter(paper=paper).select_related('subreviewer', 'invited_by')
+    
+    # Get assigned reviewers (PC members who have been assigned to review this paper)
+    assigned_reviewers = []
+    for review in reviews:
+        assigned_reviewers.append({
+            'name': review.reviewer.get_full_name() or review.reviewer.username,
+            'email': review.reviewer.email,
+            'status': 'Done' if review.decision else 'Not Done',
+            'decision': review.decision,
+            'submitted_at': review.submitted_at,
+        })
+    
+    # Navigation items for the conference
+    nav_items = [
+        "Submissions", "Reviews", "Status", "PC", "Events",
+        "Email", "Administration", "Conference", "News", "papersetu"
+    ]
+    
+    context = {
+        'conference': conference,
+        'paper': paper,
+        'authors': authors,
+        'reviews': reviews,
+        'review_stats': review_stats,
+        'assigned_reviewers': assigned_reviewers,
+        'subreviewer_invites': subreviewer_invites,
+        'nav_items': nav_items,
+        'active_tab': 'Submissions',
+    }
+    
+    return render(request, 'dashboard/view_paper_submission.html', context)
+
+@login_required
+def manage_submission(request, conf_id, submission_id):
+    """Manage a single submission - chair and PC members only"""
+    conference = get_object_or_404(Conference, id=conf_id)
+    paper = get_object_or_404(Paper, id=submission_id, conference=conference)
+    
+    # Check if user has permission to manage this paper (chair or PC member only)
+    user_roles = UserConferenceRole.objects.filter(user=request.user, conference=conference).values_list('role', flat=True)
+    is_chair = conference.chair == request.user
+    is_pc_member = 'pc_member' in user_roles
+    
+    if not (is_chair or is_pc_member):
+        return render(request, 'dashboard/forbidden.html', {'conference': conference})
+    
+    # Get all authors (main author + additional authors)
+    main_author = paper.author
+    additional_authors = paper.authors.all()
+    
+    # Get reviews for this paper with all details
+    reviews = paper.reviews.all().select_related('reviewer').order_by('-submitted_at')
+    
+    # Get subreviewers for this paper
+    subreviewers = User.objects.filter(
+        subreviewer_invites__paper=paper,
+        subreviewer_invites__status='accepted'
+    ).distinct()
+    
+    # Get review statistics
+    total_reviews = reviews.filter(decision__in=['accept', 'reject']).count()
+    accept_count = reviews.filter(decision='accept').count()
+    reject_count = reviews.filter(decision='reject').count()
+    pending_reviews = reviews.filter(decision__isnull=True).count()
+    
+    # Prepare keywords list for template
+    keywords_list = [k.strip() for k in paper.keywords.split(',')] if paper.keywords else []
+    
+    # Handle decision submission
+    if request.method == 'POST':
+        decision = request.POST.get('decision')
+        if decision in ['accept', 'reject'] and is_chair:  # Only chair can make final decisions
+            paper.status = decision
+            paper.save()
+            
+            # Create notification for author
+            Notification.objects.create(
+                recipient=paper.author,
+                notification_type='paper_decision',
+                title=f'Paper Decision - {decision.title()}',
+                message=f'Your paper "{paper.title}" has been {decision}ed for {conference.name}.',
+                related_paper=paper,
+                related_conference=conference
+            )
+            
+            messages.success(request, f'Paper has been {decision}ed successfully.')
+            return redirect('dashboard:manage_submission', conf_id=conf_id, submission_id=submission_id)
+    
+    context = {
+        'conference': conference,
+        'paper': paper,
+        'main_author': main_author,
+        'additional_authors': additional_authors,
+        'reviews': reviews,
+        'subreviewers': subreviewers,
+        'total_reviews': total_reviews,
+        'accept_count': accept_count,
+        'reject_count': reject_count,
+        'pending_reviews': pending_reviews,
+        'is_chair': is_chair,
+        'is_pc_member': is_pc_member,
+        'keywords_list': keywords_list,
+    }
+    
+    return render(request, 'dashboard/manage_submission.html', context)
+
+@login_required
+def authors_manage(request, conf_id):
+    """Manage author communications page"""
+    conference = get_object_or_404(Conference, id=conf_id)
+    
+    # Check if user has permission to access this page (chair or PC member)
+    user_roles = UserConferenceRole.objects.filter(user=request.user, conference=conference).values_list('role', flat=True)
+    is_chair = conference.chair == request.user
+    is_pc_member = 'pc_member' in user_roles
+    
+    if not (is_chair or is_pc_member):
+        return render(request, 'dashboard/forbidden.html', {'conference': conference})
+    
+    context = {
+        'conference': conference,
+        'is_chair': is_chair,
+        'is_pc_member': is_pc_member,
+    }
+    
+    return render(request, 'dashboard/authors.html', context)
+
+@login_required
+def change_review_decision(request, conf_id, submission_id, review_id):
+    """Change review decision - chair and PC members only"""
+    conference = get_object_or_404(Conference, id=conf_id)
+    paper = get_object_or_404(Paper, id=submission_id, conference=conference)
+    review = get_object_or_404(Review, id=review_id, paper=paper)
+    
+    # Check if user has permission to change this review (chair or PC member only)
+    user_roles = UserConferenceRole.objects.filter(user=request.user, conference=conference).values_list('role', flat=True)
+    is_chair = conference.chair == request.user
+    is_pc_member = 'pc_member' in user_roles
+    
+    if not (is_chair or is_pc_member):
+        return render(request, 'dashboard/forbidden.html', {'conference': conference})
+    
+    # Get reviewer details
+    reviewer = review.reviewer
+    
+    if request.method == 'POST':
+        # Handle form submission
+        decision = request.POST.get('decision')
+        rating = request.POST.get('rating')
+        confidence = request.POST.get('confidence')
+        comments = request.POST.get('comments')
+        remarks = request.POST.get('remarks')
+        
+        # Validate required fields
+        if not decision or decision not in ['accept', 'reject']:
+            messages.error(request, 'Please select a valid decision.')
+        else:
+            # Update the review
+            review.decision = decision
+            review.rating = int(rating) if rating else None
+            review.confidence = int(confidence) if confidence else None
+            review.comments = comments or ''
+            review.remarks = remarks or ''
+            review.save()
+            
+            # Create notification for the reviewer about the change
+            Notification.objects.create(
+                recipient=reviewer,
+                notification_type='paper_review',
+                title=f'Review Decision Modified - {paper.title}',
+                message=f'Your review decision for paper "{paper.title}" has been modified by a PC member.',
+                related_paper=paper,
+                related_conference=conference,
+                related_review=review
+            )
+            
+            # Create notification for the paper author if decision changed
+            if review.decision in ['accept', 'reject']:
+                Notification.objects.create(
+                    recipient=paper.author,
+                    notification_type='paper_review',
+                    title=f'Review Decision Updated - {paper.title}',
+                    message=f'A review decision for your paper "{paper.title}" has been updated.',
+                    related_paper=paper,
+                    related_conference=conference
+                )
+            
+            messages.success(request, f'Review decision has been successfully updated for {reviewer.get_full_name() or reviewer.username}.')
+            return redirect('dashboard:conference_submissions', conf_id=conf_id)
+    
+    context = {
+        'conference': conference,
+        'paper': paper,
+        'review': review,
+        'reviewer': reviewer,
+        'is_chair': is_chair,
+        'is_pc_member': is_pc_member,
+    }
+    
+    return render(request, 'dashboard/change_review_decision.html', context)

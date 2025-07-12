@@ -76,7 +76,37 @@
             </ul>
         </nav>
         {% endblock %}
-        <!-- Conference Info Section -->
+        <!-- Conference Info Edit Form (Chair Only) -->
+        {% if request.user == conference.chair %}
+        <section class="bg-white rounded-md shadow p-6 mb-8">
+            <h2 class="text-2xl font-bold text-blue-700 mb-4 flex items-center">
+                <i class="fas fa-edit mr-2"></i>Edit Conference Information
+            </h2>
+            {% if message %}
+                {% if 'successfully' in message %}
+                    <div class="mb-4 p-3 rounded bg-green-100 text-green-800">{{ message }}</div>
+                {% else %}
+                    <div class="mb-4 p-3 rounded bg-red-100 text-red-800">{{ message }}</div>
+                {% endif %}
+            {% endif %}
+            <form method="post" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% csrf_token %}
+                {% for field in form %}
+                    <div>
+                        <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<p class="text-xs text-gray-500">{{ field.help_text }}</p>{% endif %}
+                        {% if field.errors %}<p class="text-xs text-red-600">{{ field.errors.0 }}</p>{% endif %}
+                    </div>
+                {% endfor %}
+                <div class="md:col-span-2 flex justify-end mt-2">
+                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Save Changes</button>
+                </div>
+            </form>
+        </section>
+        {% endif %}
+
+        <!-- Conference Info Display Grid -->
         <section class="bg-white rounded-lg shadow p-8 mb-8">
             <h1 class="text-3xl font-bold mb-4 text-blue-700">Conference Information</h1>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -95,13 +125,12 @@
                 <div><span class="font-semibold">Organizer:</span> {{ conference.organizer }}</div>
                 <div><span class="font-semibold">Organizer Web Page:</span> <a href="{{ conference.organizer_web_page }}" class="text-blue-600 underline" target="_blank">{{ conference.organizer_web_page }}</a></div>
                 <div><span class="font-semibold">Contact Phone:</span> {{ conference.contact_phone }}</div>
-                <div><span class="font-semibold">Your Role:</span> {{ conference.role }}</div>
-                <div><span class="font-semibold">Other Info:</span> {{ conference.other_info }}</div>
-                <div><span class="font-semibold">Theme/Domain:</span> {{ conference.domain }}</div>
+                <div><span class="font-semibold">Contact Email:</span> {{ conference.contact_email }}</div>
+                <div><span class="font-semibold">Registration Fee:</span> ₹{{ conference.registration_fee }}</div>
+                <div><span class="font-semibold">Theme/Domain:</span> {{ conference.theme_domain }}</div>
                 <div><span class="font-semibold">Description:</span> {{ conference.description }}</div>
                 <div><span class="font-semibold">Paper Submission Deadline:</span> {{ conference.paper_submission_deadline }}</div>
                 <div><span class="font-semibold">Paper Format:</span> {{ conference.paper_format|upper }}</div>
-                <div><span class="font-semibold">Registration Fee:</span> ₹{{ conference.registration_fee }}</div>
             </div>
             <div class="text-gray-600 mb-2">Status: <span class="font-semibold">{{ conference.status|title }}</span></div>
             <div class="mb-4">

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Author Communications - {{ conference.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-8">
+        <h1 class="text-2xl font-semibold text-gray-800 mb-8">Manage Author Communications</h1>
+        
+        <div class="space-y-4 max-w-md w-full">
+            <a href="#" 
+               class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition">
+                <i class="fas fa-bell mr-2"></i>
+                Send notifications and/or reviews
+            </a>
+            
+            <a href="{% url 'dashboard:send_to_authors' conference.id %}" 
+               class="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition">
+                <i class="fas fa-envelope mr-2"></i>
+                Send email to authors
+            </a>
+            
+            <a href="{% url 'dashboard:authors_list' conference.id %}" 
+               class="block w-full text-center bg-gray-700 hover:bg-gray-800 text-white font-medium py-2 px-4 rounded-lg shadow-md transition">
+                <i class="fas fa-users mr-2"></i>
+                Author's email addresses
+            </a>
+        </div>
+    </div>
+</body>
+</html> 

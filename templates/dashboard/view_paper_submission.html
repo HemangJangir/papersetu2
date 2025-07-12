@@ -1,0 +1,268 @@
+{% extends 'dashboard/dashboard.html' %}
+{% block content %}
+<div class="max-w-7xl mx-auto p-4 text-sm">
+  <!-- Header with Back Button -->
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-blue-800 flex items-center gap-2">
+      <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      Paper Submission Details
+    </h1>
+    <a href="{% url 'dashboard:conference_submissions' conference.id %}" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+      Back to Submissions
+    </a>
+  </div>
+
+  <!-- Paper Title and Status -->
+  <div class="bg-white rounded-2xl shadow p-6 mb-6">
+    <div class="flex items-start justify-between">
+      <div class="flex-1">
+        <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ paper.title }}</h2>
+        <p class="text-gray-600">Submission ID: {{ paper.id }}</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="px-3 py-1 rounded-full text-xs font-semibold
+          {% if paper.status == 'submitted' %}bg-blue-100 text-blue-800
+          {% elif paper.status == 'accepted' %}bg-green-100 text-green-800
+          {% elif paper.status == 'rejected' %}bg-red-100 text-red-800
+          {% endif %}">
+          {{ paper.status|title }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Left Column -->
+    <div class="space-y-6">
+      <!-- Paper File -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          Paper File
+        </h3>
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div class="flex items-center gap-3">
+            <svg class="w-8 h-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+            </svg>
+            <div>
+              <p class="font-medium text-gray-900">{{ paper.file.name|slice:"8:" }}</p>
+              <p class="text-sm text-gray-500">Uploaded: {{ paper.submitted_at|date:"M d, Y H:i" }}</p>
+            </div>
+          </div>
+          <a href="{{ paper.file.url }}" target="_blank" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+            </svg>
+            Download
+          </a>
+        </div>
+      </div>
+
+      <!-- Keywords and Keyphrases -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+          Keywords & Keyphrases
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <h4 class="font-medium text-gray-900 mb-2">Author Keywords</h4>
+            <div class="flex flex-wrap gap-2">
+              {% if paper.keywords %}
+                {% for keyword in paper.keywords.split|slice:":5" %}
+                  <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">{{ keyword }}</span>
+                {% endfor %}
+              {% else %}
+                <span class="text-gray-500 italic">No keywords provided</span>
+              {% endif %}
+            </div>
+          </div>
+          <div>
+            <h4 class="font-medium text-gray-900 mb-2">EasyChair Keyphrases</h4>
+            <div class="flex flex-wrap gap-2">
+              <span class="text-gray-500 italic">Not available</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Abstract -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Abstract
+        </h3>
+        <div class="bg-gray-50 rounded-lg p-4">
+          <p class="text-gray-700 leading-relaxed">{{ paper.abstract }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="space-y-6">
+      <!-- Timestamps -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Timestamps
+        </h3>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="font-medium text-gray-700">Submission</span>
+            <span class="text-gray-900">{{ paper.submitted_at|date:"M d, Y H:i" }}</span>
+          </div>
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="font-medium text-gray-700">Last Update</span>
+            <span class="text-gray-900">{{ paper.submitted_at|date:"M d, Y H:i" }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assigned Reviewers -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87M17 20a4 4 0 00-3-3.87M9 20a4 4 0 013-3.87M12 4a4 4 0 014 4v4a4 4 0 01-8 0V8a4 4 0 014-4z" />
+          </svg>
+          Assigned Reviewers
+        </h3>
+        {% if assigned_reviewers %}
+          <div class="space-y-3">
+            {% for reviewer in assigned_reviewers %}
+              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p class="font-medium text-gray-900">{{ reviewer.name }}</p>
+                  <p class="text-sm text-gray-500">{{ reviewer.email }}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-1 rounded-full text-xs font-semibold
+                    {% if reviewer.status == 'Done' %}bg-green-100 text-green-800
+                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                    {{ reviewer.status }}
+                  </span>
+                  {% if reviewer.decision %}
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold
+                      {% if reviewer.decision == 'accept' %}bg-green-100 text-green-800
+                      {% else %}bg-red-100 text-red-800{% endif %}">
+                      {{ reviewer.decision|title }}
+                    </span>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-gray-500 italic">No reviewers assigned yet</p>
+        {% endif %}
+      </div>
+
+      <!-- Subreviewers -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87M17 20a4 4 0 00-3-3.87M9 20a4 4 0 013-3.87M12 4a4 4 0 014 4v4a4 4 0 01-8 0V8a4 4 0 014-4z" />
+          </svg>
+          Subreviewers
+        </h3>
+        {% if subreviewer_invites %}
+          <div class="space-y-3">
+            {% for invite in subreviewer_invites %}
+              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p class="font-medium text-gray-900">{{ invite.subreviewer.get_full_name|default:invite.subreviewer.username }}</p>
+                  <p class="text-sm text-gray-500">{{ invite.email }}</p>
+                  <p class="text-xs text-gray-400">Invited by: {{ invite.invited_by.get_full_name|default:invite.invited_by.username }}</p>
+                </div>
+                <span class="px-2 py-1 rounded-full text-xs font-semibold
+                  {% if invite.status == 'accepted' %}bg-green-100 text-green-800
+                  {% elif invite.status == 'declined' %}bg-red-100 text-red-800
+                  {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                  {{ invite.status|title }}
+                </span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-gray-500 italic">No subreviewers assigned</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Authors Table -->
+  <div class="bg-white rounded-2xl shadow mt-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-xl font-semibold text-blue-700 flex items-center gap-2">
+        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Authors
+      </h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Name</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Name</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Affiliation</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Web Page</th>
+            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Corresponding</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          {% for author in authors %}
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ author.first_name }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ author.last_name }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ author.email }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ author.country }}</td>
+              <td class="px-6 py-4 text-sm text-gray-700">{{ author.affiliation }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                {% if author.web_page %}
+                  <a href="{{ author.web_page }}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                {% else %}
+                  <span class="text-gray-400">-</span>
+                {% endif %}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-center">
+                {% if author.is_corresponding %}
+                  <svg class="w-5 h-5 text-green-600 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                  </svg>
+                {% else %}
+                  <span class="text-gray-400">-</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" class="px-6 py-4 text-center text-gray-500">No authors found</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %} 
