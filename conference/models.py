@@ -1,5 +1,7 @@
 from django.db import models
 from accounts.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 AREA_CHOICES = [
     ('AI', 'Artificial Intelligence'),
@@ -444,3 +446,35 @@ class Author(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({'Corresponding' if self.is_corresponding else 'Author'})"
+
+FEATURE_CHOICES = [
+    ('config', 'Config'),
+    ('registration', 'Registration'),
+    ('utilities', 'Other Utilities'),
+    ('analytics', 'Analytics'),
+    ('statistics', 'Statistics'),
+    ('demo', 'Demo Version'),
+    ('tracks', 'Tracks'),
+    ('cfp', 'Create CFP'),
+    ('program', 'Create Program'),
+    ('proceedings', 'Create Proceedings'),
+]
+
+class ConferenceFeatureToggle(models.Model):
+    conference = models.ForeignKey(Conference, on_delete=models.CASCADE, related_name='feature_toggles')
+    feature = models.CharField(max_length=32, choices=FEATURE_CHOICES)
+    enabled = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('conference', 'feature')
+        verbose_name = 'Conference Feature Toggle'
+        verbose_name_plural = 'Conference Feature Toggles'
+
+    def __str__(self):
+        return f"{self.conference.name} - {self.get_feature_display()} ({'Enabled' if self.enabled else 'Disabled'})"
+
+@receiver(post_save, sender=Conference)
+def create_feature_toggles_for_conference(sender, instance, created, **kwargs):
+    if created:
+        for feature, _ in FEATURE_CHOICES:
+            ConferenceFeatureToggle.objects.get_or_create(conference=instance, feature=feature, defaults={'enabled': True})

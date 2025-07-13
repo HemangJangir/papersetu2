@@ -37,6 +37,7 @@ import zipfile
 from django.utils.text import slugify
 from io import BytesIO
 from .models import PCEmailLog
+from conference.models import ConferenceFeatureToggle, FEATURE_CHOICES
 
 class PCSendEmailForm(forms.Form):
     RECIPIENT_TYPE_CHOICES = [
@@ -1376,100 +1377,6 @@ def reviews_list(request, conf_id):
     }
     return render(request, 'dashboard/reviews_list.html', context)
 
-# Analytics Dashboard Views
-@login_required
-def analytics_dashboard(request, conf_id):
-    """
-    Analytics dashboard with charts and statistics.
-    """
-    from django.db.models import Count
-    from datetime import datetime, timedelta
-    import json
-    
-    conference = get_object_or_404(Conference, id=conf_id)
-    user = request.user
-    
-    # Ensure only the chair can access
-    if conference.chair != user:
-        return render(request, 'dashboard/forbidden.html', {
-            'message': 'Only the conference chair can access analytics.'
-        })
-    
-    # Get all papers for this conference
-    papers = Paper.objects.filter(conference=conference)
-    reviews = Review.objects.filter(paper__conference=conference)
-    
-    # 1. Submission Status Distribution
-    status_data = papers.values('status').annotate(count=Count('status')).order_by('status')
-    status_labels = [item['status'].title() for item in status_data]
-    status_counts = [item['count'] for item in status_data]
-    
-    # 2. Submissions Over Time (last 30 days)
-    end_date = datetime.now().date()
-    start_date = end_date - timedelta(days=30)
-    
-    submissions_timeline = []
-    for i in range(31):
-        current_date = start_date + timedelta(days=i)
-        count = papers.filter(submitted_at__date=current_date).count()
-        submissions_timeline.append({
-            'date': current_date.strftime('%Y-%m-%d'),
-            'count': count
-        })
-    
-    timeline_labels = [item['date'] for item in submissions_timeline]
-    timeline_counts = [item['count'] for item in submissions_timeline]
-    
-    # 3. Reviews Status
-    reviews_with_decision = reviews.filter(decision__isnull=False)
-    reviews_pending = reviews.filter(decision__isnull=True)
-    
-    review_status_data = {
-        'completed': reviews_with_decision.count(),
-        'pending': reviews_pending.count()
-    }
-    
-    # 4. Accept vs Reject Ratio
-    accept_count = reviews.filter(decision='accept').count()
-    reject_count = reviews.filter(decision='reject').count()
-    
-    # 5. Papers per reviewer
-    reviewer_stats = reviews.values('reviewer__username').annotate(
-        paper_count=Count('paper', distinct=True)
-    ).order_by('-paper_count')[:10]
-    
-    # 6. Overall Statistics
-    total_submissions = papers.count()
-    accepted_papers = papers.filter(status='accepted').count()
-    rejected_papers = papers.filter(status='rejected').count()
-    pending_papers = papers.filter(status='submitted').count()
-    
-    acceptance_rate = (accepted_papers / total_submissions * 100) if total_submissions > 0 else 0
-    
-    context = {
-        'conference': conference,
-        'total_submissions': total_submissions,
-        'accepted_papers': accepted_papers,
-        'rejected_papers': rejected_papers,
-        'pending_papers': pending_papers,
-        'acceptance_rate': round(acceptance_rate, 1),
-        'total_reviews': reviews.count(),
-        'completed_reviews': reviews_with_decision.count(),
-        'pending_reviews': reviews_pending.count(),
-        
-        # Chart data (JSON)
-        'status_labels': json.dumps(status_labels),
-        'status_counts': json.dumps(status_counts),
-        'timeline_labels': json.dumps(timeline_labels),
-        'timeline_counts': json.dumps(timeline_counts),
-        'review_status_data': json.dumps(review_status_data),
-        'accept_count': accept_count,
-        'reject_count': reject_count,
-        'reviewer_stats': reviewer_stats,
-    }
-    
-    return render(request, 'dashboard/analytics_dashboard.html', context)
-
 @login_required
 def analytics_export(request, conf_id):
     """
@@ -1640,19 +1547,71 @@ class PCSendEmailView(FormView):
         context['conference'] = self.conference
         context['email_logs'] = PCEmailLog.objects.filter(conference=self.conference).order_by('-sent_at')[:20]
         context['email_templates'] = list(EmailTemplate.objects.filter(conference=self.conference).values('id', 'subject', 'body'))
+        # Group PC members by role
+        from conference.models import UserConferenceRole
+        # Chair(s)
+        chairs = UserConferenceRole.objects.filter(conference=self.conference, role='chair').select_related('user')
+        # Ordinary PC members (exclude chair)
+        ordinary_pc_members = UserConferenceRole.objects.filter(conference=self.conference, role='pc_member').select_related('user').exclude(user=self.conference.chair)
+        context['chairs'] = [ucr.user for ucr in chairs]
+        context['ordinary_pc_members'] = [ucr.user for ucr in ordinary_pc_members]
         # For AJAX: provide recipient list for the selected type
         form = context.get('form')
         if form:
-            context['recipients_html'] = render_to_string('chair/pc/recipients_field.html', {'form': form})
+            context['recipients_html'] = render_to_string('chair/pc/recipients_field.html', {'form': form, 'chairs': context['chairs'], 'ordinary_pc_members': context['ordinary_pc_members']})
         return context
 
     def post(self, request, *args, **kwargs):
-        # AJAX recipient filtering: if AJAX and not submitting the form, return only the recipients field
         if request.headers.get('x-requested-with') == 'XMLHttpRequest' and 'recipients' not in request.POST:
             form = self.get_form_class()(request.POST, conference=self.conference)
             recipients_html = render_to_string('chair/pc/recipients_field.html', {'form': form})
             return JsonResponse({'recipients_html': recipients_html})
-        return super().post(request, *args, **kwargs)
+
+        recipients_raw = request.POST.get('recipients', '')
+        recipient_ids = [rid for rid in recipients_raw.split(',') if rid.strip()]
+        users = User.objects.filter(id__in=recipient_ids)
+        subject = request.POST.get('subject', '').strip()
+        body = request.POST.get('body', '').strip()
+        attachment = request.FILES.get('attachment')
+        errors = []
+        sent_count = 0
+        # If not confirmed, show preview page
+        if 'confirm_send' not in request.POST:
+            return render(request, 'chair/pc/send_email_confirm.html', {
+                'conference': self.conference,
+                'subject': subject,
+                'body': body,
+                'attachment': attachment,
+                'recipients': users,
+                'recipients_raw': recipients_raw,
+            })
+        # Actually send emails
+        if not users:
+            messages.error(request, 'Please select at least one PC member to send the email.')
+            return self.form_invalid(self.get_form_class()(request.POST, request.FILES, conference=self.conference))
+        if not subject or not body:
+            messages.error(request, 'Subject and message are required.')
+            return self.form_invalid(self.get_form_class()(request.POST, request.FILES, conference=self.conference))
+        for user in users:
+            personalized_body = body.replace('{*NAME*}', user.get_full_name() or user.username).replace('{{name}}', user.get_full_name() or user.username)
+            try:
+                email_msg = EmailMessage(
+                    subject=subject,
+                    body=personalized_body,
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', settings.EMAIL_HOST_USER),
+                    to=[user.email],
+                )
+                if attachment:
+                    email_msg.attach(attachment.name, attachment.read(), attachment.content_type)
+                email_msg.send(fail_silently=False)
+                sent_count += 1
+            except Exception as e:
+                errors.append(f"Failed to send to {user.email}: {e}")
+        if sent_count:
+            messages.success(request, f"Email sent to {sent_count} PC member(s)." + (f" Errors: {'; '.join(errors)}" if errors else ''))
+        else:
+            messages.error(request, 'No emails sent. ' + ('; '.join(errors) if errors else ''))
+        return redirect(self.get_success_url())
 
 # AJAX endpoint for template autofill
 @login_required
@@ -2915,3 +2874,61 @@ def change_review_decision(request, conf_id, submission_id, review_id):
     }
     
     return render(request, 'dashboard/change_review_decision.html', context)
+
+class AdminFeatureBaseView(LoginRequiredMixin, View):
+    feature_key = None  # e.g., 'config', 'registration', etc.
+    template_name = None
+
+    def get(self, request, conf_id):
+        conference = get_object_or_404(Conference, id=conf_id)
+        toggle = ConferenceFeatureToggle.objects.filter(conference=conference, feature=self.feature_key).first()
+        enabled = toggle.enabled if toggle else False
+        context = {
+            'conference': conference,
+            'feature_enabled': enabled,
+            'feature_name': dict(FEATURE_CHOICES).get(self.feature_key, self.feature_key.title()),
+        }
+        if not enabled:
+            context['disabled_message'] = f"{context['feature_name']} is not enabled for this conference."
+        return render(request, self.template_name, context)
+
+# Feature views
+class ConfigFeatureView(AdminFeatureBaseView):
+    feature_key = 'config'
+    template_name = 'dashboard/admin_features/config.html'
+
+class RegistrationFeatureView(AdminFeatureBaseView):
+    feature_key = 'registration'
+    template_name = 'dashboard/admin_features/registration.html'
+
+class UtilitiesFeatureView(AdminFeatureBaseView):
+    feature_key = 'utilities'
+    template_name = 'dashboard/admin_features/utilities.html'
+
+class AnalyticsFeatureView(AdminFeatureBaseView):
+    feature_key = 'analytics'
+    template_name = 'dashboard/admin_features/analytics.html'
+
+class StatisticsFeatureView(AdminFeatureBaseView):
+    feature_key = 'statistics'
+    template_name = 'dashboard/admin_features/statistics.html'
+
+class DemoFeatureView(AdminFeatureBaseView):
+    feature_key = 'demo'
+    template_name = 'dashboard/admin_features/demo.html'
+
+class TracksFeatureView(AdminFeatureBaseView):
+    feature_key = 'tracks'
+    template_name = 'dashboard/admin_features/tracks.html'
+
+class CFPFeatureView(AdminFeatureBaseView):
+    feature_key = 'cfp'
+    template_name = 'dashboard/admin_features/cfp.html'
+
+class ProgramFeatureView(AdminFeatureBaseView):
+    feature_key = 'program'
+    template_name = 'dashboard/admin_features/program.html'
+
+class ProceedingsFeatureView(AdminFeatureBaseView):
+    feature_key = 'proceedings'
+    template_name = 'dashboard/admin_features/proceedings.html'
