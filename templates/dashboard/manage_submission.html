@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ paper.title }} - Manage Submission</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="bg-white shadow mb-8 border-b border-gray-200 sticky top-0 z-30 w-full">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="text-2xl font-bold text-blue-700">
+                <svg class="w-24 h-auto mr-2 inline" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Paper icon -->
+                    <rect x="5" y="10" width="15" height="20" fill="#1e40af" rx="2"/>
+                    <line x1="8" y1="15" x2="17" y2="15" stroke="white" stroke-width="1"/>
+                    <line x1="8" y1="18" x2="17" y2="18" stroke="white" stroke-width="1"/>
+                    <line x1="8" y1="21" x2="17" y2="21" stroke="white" stroke-width="1"/>
+                    <line x1="8" y1="24" x2="14" y2="24" stroke="white" stroke-width="1"/>
+                    <!-- Text -->
+                    <text x="25" y="25" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#1e40af">PaperSetu</text>
+                </svg>
+            </div>
+            <ul class="flex space-x-6">
+                <li class="border-r border-gray-300 pr-4"><a href="/home/" class="hover:text-blue-600">Home</a></li>
+                {% if user.is_authenticated %}
+                    <li class="border-r border-gray-300 pr-4"><a href="/accounts/logout/">Logout</a></li>
+                    <li class="relative">
+                        <button id="profileBtn" class="focus:outline-none">
+                            <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username }}" alt="Profile" class="w-8 h-8 rounded-full border border-gray-300">
+                        </button>
+                        <div id="profileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded shadow-lg z-50">
+                            <div class="px-4 py-2 border-b border-gray-100">
+                                <div class="font-semibold">{{ user.get_full_name|default:user.username }}</div>
+                                <div class="text-xs text-gray-500">{{ user.email }}</div>
+                            </div>
+                            <a href="/accounts/settings/" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
+                        </div>
+                    </li>
+                {% else %}
+                    <li><a href="/accounts/login/" class="hover:text-blue-600">Login</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+    
+    <main class="container mx-auto px-4">
+        <!-- Back to Submissions -->
+        <div class="mb-6">
+            <a href="{% url 'dashboard:conference_submissions' conference.id %}" 
+               class="inline-flex items-center text-blue-600 hover:text-blue-800">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Back to Submissions
+            </a>
+        </div>
+
+        <!-- Conference Header -->
+        <section class="bg-white rounded-lg shadow p-6 mb-8">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-3xl font-bold mb-2 text-blue-700">{{ conference.name }}</h1>
+                    <p class="text-gray-600 mb-2">{{ conference.acronym }} | {{ conference.venue }}, {{ conference.city }}</p>
+                    <p class="text-sm text-gray-500">{{ conference.start_date }} - {{ conference.end_date }}</p>
+                </div>
+                <div class="text-right">
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold
+                        {% if conference.status == 'upcoming' %}bg-yellow-100 text-yellow-800
+                        {% elif conference.status == 'live' %}bg-green-100 text-green-800
+                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ conference.status|title }}
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Submission Details -->
+        <section class="bg-white rounded-lg shadow p-6 mb-8">
+            <div class="flex justify-between items-start mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">
+                    <i class="fas fa-file-alt text-blue-600 mr-3"></i>
+                    Submission Details
+                </h2>
+                <span class="px-3 py-1 rounded-full text-xs font-semibold
+                    {% if paper.status == 'submitted' %}bg-blue-100 text-blue-800
+                    {% elif paper.status == 'accepted' %}bg-green-100 text-green-800
+                    {% elif paper.status == 'rejected' %}bg-red-100 text-red-800
+                    {% endif %}">
+                    {{ paper.status|title }}
+                </span>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-3">{{ paper.title }}</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Main Author</label>
+                            <div class="flex items-center">
+                                <img class="h-8 w-8 rounded-full mr-3" 
+                                     src="https://ui-avatars.com/api/?name={{ main_author.get_full_name|default:main_author.username }}" 
+                                     alt="{{ main_author.get_full_name }}">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900">
+                                        {{ main_author.get_full_name|default:main_author.username }}
+                                    </div>
+                                    <div class="text-sm text-gray-500">{{ main_author.email }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if additional_authors %}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Additional Authors</label>
+                            <div class="space-y-2">
+                                {% for author in additional_authors %}
+                                <div class="flex items-center">
+                                    <img class="h-6 w-6 rounded-full mr-2" 
+                                         src="https://ui-avatars.com/api/?name={{ author.first_name }} {{ author.last_name }}" 
+                                         alt="{{ author.first_name }} {{ author.last_name }}">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ author.first_name }} {{ author.last_name }}
+                                        </div>
+                                        <div class="text-xs text-gray-500">{{ author.email }}</div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if paper.keywords %}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Keywords</label>
+                            <div class="flex flex-wrap gap-2">
+                                {% for keyword in keywords_list %}
+                                <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                                    {{ keyword }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Abstract</label>
+                            <p class="text-sm text-gray-600 leading-relaxed">{{ paper.abstract }}</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">File</label>
+                            <a href="{{ paper.file.url }}" 
+                               target="_blank" 
+                               class="inline-flex items-center text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-download mr-2"></i>
+                                Download Paper
+                            </a>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Submitted</label>
+                            <p class="text-sm text-gray-600">
+                                {{ paper.submitted_at|date:"F d, Y" }} at {{ paper.submitted_at|date:"H:i" }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Decision Section (Chair Only) -->
+        {% if is_chair %}
+        <section class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">
+                <i class="fas fa-gavel text-blue-600 mr-3"></i>
+                Make Decision
+            </h2>
+            
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <div class="flex gap-4">
+                    <button type="submit" 
+                            name="decision" 
+                            value="accept"
+                            class="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center">
+                        <i class="fas fa-check mr-2"></i>
+                        Accept Paper
+                    </button>
+                    <button type="submit" 
+                            name="decision" 
+                            value="reject"
+                            class="px-6 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center">
+                        <i class="fas fa-times mr-2"></i>
+                        Reject Paper
+                    </button>
+                </div>
+            </form>
+        </section>
+        {% endif %}
+
+        <!-- Reviews Table -->
+        <section class="bg-white rounded-lg shadow p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-900">
+                    <i class="fas fa-users text-blue-600 mr-3"></i>
+                    Reviews
+                </h2>
+                <div class="flex gap-4 text-sm">
+                    <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                        {{ total_reviews }} Total
+                    </span>
+                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                        {{ accept_count }} Accept
+                    </span>
+                    <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full">
+                        {{ reject_count }} Reject
+                    </span>
+                    {% if pending_reviews > 0 %}
+                    <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">
+                        {{ pending_reviews }} Pending
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if reviews %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reviewer</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Public Comment</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidential Comment</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Decision</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for review in reviews %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <img class="h-8 w-8 rounded-full mr-3" 
+                                         src="https://ui-avatars.com/api/?name={{ review.reviewer.get_full_name|default:review.reviewer.username }}" 
+                                         alt="{{ review.reviewer.get_full_name }}">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ review.reviewer.get_full_name|default:review.reviewer.username }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">{{ review.reviewer.email }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {% if review.rating %}
+                                <div class="flex items-center">
+                                    <span class="font-medium">{{ review.rating }}/5</span>
+                                    <div class="ml-2 flex">
+                                        {% for i in "12345" %}
+                                        <div class="w-2 h-2 rounded-full mr-1 {% if forloop.counter <= review.rating %}bg-yellow-400{% else %}bg-gray-200{% endif %}"></div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {% if review.confidence %}
+                                <div class="flex items-center">
+                                    <span class="font-medium">{{ review.confidence }}/5</span>
+                                    <div class="ml-2 flex">
+                                        {% for i in "12345" %}
+                                        <div class="w-2 h-2 rounded-full mr-1 {% if forloop.counter <= review.confidence %}bg-blue-400{% else %}bg-gray-200{% endif %}"></div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900">
+                                {% if review.comments %}
+                                <div class="max-w-xs">
+                                    <div class="line-clamp-2">{{ review.comments|truncatewords:15 }}</div>
+                                    {% if review.comments|wordcount > 15 %}
+                                    <button class="text-blue-600 text-xs hover:underline mt-1" onclick="showFullComment(this, '{{ review.comments|escapejs }}')">
+                                        Show more
+                                    </button>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900">
+                                {% if review.remarks %}
+                                <div class="max-w-xs">
+                                    <div class="line-clamp-2">{{ review.remarks|truncatewords:15 }}</div>
+                                    {% if review.remarks|wordcount > 15 %}
+                                    <button class="text-blue-600 text-xs hover:underline mt-1" onclick="showFullComment(this, '{{ review.remarks|escapejs }}')">
+                                        Show more
+                                    </button>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {% if review.submitted_at %}
+                                <div>
+                                    <div class="font-medium">{{ review.submitted_at|date:"M d, Y" }}</div>
+                                    <div class="text-xs text-gray-400">{{ review.submitted_at|date:"H:i" }}</div>
+                                </div>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if review.decision %}
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                                    {% if review.decision == 'accept' %}bg-green-100 text-green-800 border border-green-200
+                                    {% elif review.decision == 'reject' %}bg-red-100 text-red-800 border border-red-200
+                                    {% endif %}">
+                                    <i class="fas {% if review.decision == 'accept' %}fa-check{% else %}fa-times{% endif %} mr-1"></i>
+                                    {{ review.decision|title }}
+                                </span>
+                                {% else %}
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    Pending
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                {% if review.decision %}
+                                <a href="{% url 'dashboard:change_review_decision' conf_id=conference.id submission_id=paper.id review_id=review.id %}" 
+                                   class="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                                    <i class="fas fa-edit mr-1"></i>
+                                    Change Decision
+                                </a>
+                                {% else %}
+                                <span class="text-gray-400 text-xs">No decision yet</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <i class="fas fa-users text-gray-300 text-4xl mb-4"></i>
+                <p class="text-lg font-medium text-gray-500">No reviews yet</p>
+                <p class="text-sm text-gray-400">Reviews will appear here once they are submitted.</p>
+            </div>
+            {% endif %}
+        </section>
+
+        <!-- PC Member Comments Section -->
+        {% if is_pc_member or is_chair %}
+        <section class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">
+                <i class="fas fa-comments text-blue-600 mr-3"></i>
+                PC Member Comments
+            </h2>
+            
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label for="pc_comment" class="block text-sm font-medium text-gray-700 mb-2">
+                        Add Private Comment (PC Members Only)
+                    </label>
+                    <textarea id="pc_comment" 
+                              name="pc_comment" 
+                              rows="4" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Add your private comment about this submission..."></textarea>
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Comment
+                    </button>
+                </div>
+            </form>
+        </section>
+        {% endif %}
+    </main>
+
+    <script>
+        // Profile dropdown logic
+        const profileBtn = document.getElementById('profileBtn');
+        const profileDropdown = document.getElementById('profileDropdown');
+        if (profileBtn && profileDropdown) {
+            profileBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                profileDropdown.classList.toggle('hidden');
+            });
+            document.addEventListener('click', function() {
+                profileDropdown.classList.add('hidden');
+            });
+        }
+
+        // Show full comment function
+        function showFullComment(button, fullText) {
+            const commentDiv = button.previousElementSibling;
+            if (button.textContent === 'Show more') {
+                commentDiv.textContent = fullText;
+                button.textContent = 'Show less';
+                commentDiv.classList.remove('line-clamp-2');
+            } else {
+                commentDiv.textContent = fullText.split(' ').slice(0, 15).join(' ') + '...';
+                button.textContent = 'Show more';
+                commentDiv.classList.add('line-clamp-2');
+            }
+        }
+    </script>
+</body>
+</html> 

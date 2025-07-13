@@ -93,8 +93,26 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
 EMAIL_HOST_USER = 'papersetu@gmail.com'  # <-- Replace with your Gmail address
 EMAIL_HOST_PASSWORD = 'unhh ovcr cqri wxwr'  # <-- Replace with your Gmail app password
+DEFAULT_FROM_EMAIL = 'papersetu@gmail.com'
+
+# SSL Certificate verification settings - disable certificate verification for development
+import ssl
+EMAIL_SSL_CONTEXT = ssl.create_default_context()
+EMAIL_SSL_CONTEXT.check_hostname = False
+EMAIL_SSL_CONTEXT.verify_mode = ssl.CERT_NONE
+
+# Alternative: Use console backend for development/testing
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# For development: Use console backend to avoid SSL issues
+# Uncomment the line below to see emails in console instead of sending them
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# For production: Use SMTP with proper SSL handling
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
