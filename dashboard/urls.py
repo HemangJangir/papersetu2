@@ -73,6 +73,11 @@ urlpatterns = [
     path('conference/<int:conf_id>/submissions/<int:submission_id>/view/', views.view_paper_submission, name='view_paper_submission'),
     path('conference/<int:conf_id>/submission/<int:submission_id>/manage/', views.manage_submission, name='manage_submission'),
     path('conference/<int:conf_id>/submission/<int:submission_id>/review/<int:review_id>/change/', views.change_review_decision, name='change_review_decision'),
+    # Review functionality URLs
+    path('conference/<int:conf_id>/submission/<int:submission_id>/add-review/', views.add_review, name='add_review'),
+    path('conference/<int:conf_id>/submission/<int:submission_id>/update-review/', views.update_review, name='update_review'),
+    path('conference/<int:conf_id>/submission/<int:submission_id>/contact-subreviewer/<int:subreviewer_id>/', views.contact_subreviewer, name='contact_subreviewer'),
+    path('conference/<int:conf_id>/submission/<int:submission_id>/details/', views.view_submission_details, name='view_submission_details'),
     path('conference/<int:conf_id>/config/', ConfigFeatureView.as_view(), name='admin_config'),
     path('conference/<int:conf_id>/registration/', RegistrationFeatureView.as_view(), name='admin_registration'),
     path('conference/<int:conf_id>/utilities/', UtilitiesFeatureView.as_view(), name='admin_utilities'),

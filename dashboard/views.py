@@ -1666,8 +1666,45 @@ def get_sample_recipient_data(request, conf_id):
         }
     return JsonResponse(data)
 
+@login_required
 def all_submissions(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
+    user = request.user
+    
+    # Get all papers for this conference
+    papers = Paper.objects.filter(conference=conference).select_related('author').prefetch_related('reviews', 'subreviewer_invites')
+    
+    # Section 1: Submissions assigned to me and accepted by a subreviewer
+    assigned_with_accepted_subreviewers = []
+    
+    # Section 2: Submissions reviewed by me
+    reviewed_by_me = []
+    
+    for paper in papers:
+        # Check if user is assigned to review this paper
+        user_review = paper.reviews.filter(reviewer=user).first()
+        
+        # Get subreviewer invites for this paper
+        subreviewer_invites = paper.subreviewer_invites.all()
+        accepted_subreviewers = [invite for invite in subreviewer_invites if invite.status == 'accepted']
+        
+        # Check if user has reviewed this paper
+        if user_review and user_review.decision:
+            reviewed_by_me.append({
+                'paper': paper,
+                'review': user_review,
+                'subreviewers': accepted_subreviewers,
+                'all_subreviewers': subreviewer_invites
+            })
+        # Check if user is assigned but hasn't reviewed yet, and has accepted subreviewers
+        elif user_review and not user_review.decision and accepted_subreviewers:
+            assigned_with_accepted_subreviewers.append({
+                'paper': paper,
+                'review': user_review,
+                'subreviewers': accepted_subreviewers,
+                'all_subreviewers': subreviewer_invites
+            })
+    
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
         "Email", "Administration", "Conference", "News", "papersetu"
@@ -1690,10 +1727,37 @@ def all_submissions(request, conf_id):
         'nav_items': nav_items,
         'active_tab': active_tab,
         'review_dropdown_items': review_dropdown_items,
+        'assigned_with_accepted_subreviewers': assigned_with_accepted_subreviewers,
+        'reviewed_by_me': reviewed_by_me,
+        'user': user,
     })
 
+@login_required
 def assigned_to_me(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
+    user = request.user
+    
+    # Get papers assigned to the current user for review
+    assigned_papers = []
+    user_reviews = Review.objects.filter(
+        paper__conference=conference,
+        reviewer=user
+    ).select_related('paper', 'paper__author').prefetch_related('paper__subreviewer_invites')
+    
+    for review in user_reviews:
+        # Get subreviewer information for this paper
+        subreviewer_invites = review.paper.subreviewer_invites.all()
+        
+        assigned_papers.append({
+            'paper': review.paper,
+            'review': review,
+            'subreviewers': subreviewer_invites
+        })
+    
+    # Calculate statistics
+    pending_count = sum(1 for assignment in assigned_papers if not assignment['review'].decision)
+    completed_count = sum(1 for assignment in assigned_papers if assignment['review'].decision)
+    
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
         "Email", "Administration", "Conference", "News", "papersetu"
@@ -1716,6 +1780,9 @@ def assigned_to_me(request, conf_id):
         'nav_items': nav_items,
         'active_tab': active_tab,
         'review_dropdown_items': review_dropdown_items,
+        'assigned_papers': assigned_papers,
+        'pending_count': pending_count,
+        'completed_count': completed_count,
     })
 
 @login_required
@@ -1843,8 +1910,98 @@ Conference Chair"""
     }
     return render(request, 'dashboard/subreviewers.html', context)
 
+@login_required
 def pool_subreviewers(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
+    user = request.user
+    
+    # Get search and filter parameters
+    search_query = request.GET.get('search', '').strip()
+    selected_expertise = request.GET.get('expertise', '')
+    selected_availability = request.GET.get('availability', '')
+    
+    # Get all subreviewers for this conference
+    subreviewers = User.objects.filter(
+        userconferencerole__conference=conference,
+        userconferencerole__role='subreviewer'
+    ).select_related('reviewer_profile').prefetch_related('reviews', 'subreviewer_invites')
+    
+    # Apply search filter
+    if search_query:
+        subreviewers = subreviewers.filter(
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(username__icontains=search_query) |
+            Q(email__icontains=search_query)
+        )
+    
+    # Apply expertise filter
+    if selected_expertise:
+        subreviewers = subreviewers.filter(reviewer_profile__expertise=selected_expertise)
+    
+    # Apply availability filter
+    if selected_availability:
+        if selected_availability == 'available':
+            subreviewers = subreviewers.annotate(
+                current_assignments=Count('subreviewer_invites', filter=Q(subreviewer_invites__status='accepted'))
+            ).filter(current_assignments__lt=3)
+        elif selected_availability == 'busy':
+            subreviewers = subreviewers.annotate(
+                current_assignments=Count('subreviewer_invites', filter=Q(subreviewer_invites__status='accepted'))
+            ).filter(current_assignments__gte=3)
+    
+    # Add current assignment count for all subreviewers
+    for subreviewer in subreviewers:
+        subreviewer.current_assignments = subreviewer.subreviewer_invites.filter(status='accepted').count()
+    
+    # Get expertise choices
+    expertise_choices = ReviewerPool.objects.values_list('expertise', flat=True).distinct()
+    
+    # Get available papers for assignment
+    available_papers = Paper.objects.filter(conference=conference).select_related('author')
+    
+    # Handle assignment form submission
+    if request.method == 'POST':
+        subreviewer_id = request.POST.get('subreviewer_id')
+        paper_id = request.POST.get('paper_id')
+        email = request.POST.get('email')
+        
+        if subreviewer_id and paper_id and email:
+            try:
+                subreviewer = User.objects.get(id=subreviewer_id)
+                paper = Paper.objects.get(id=paper_id, conference=conference)
+                
+                # Create subreviewer invite
+                token = get_random_string(48)
+                invite = SubreviewerInvite.objects.create(
+                    paper=paper,
+                    subreviewer=subreviewer,
+                    invited_by=user,
+                    email=email,
+                    token=token
+                )
+                
+                # Send assignment email
+                subject = f"Paper Review Assignment: '{paper.title}'"
+                message = f"""Dear {subreviewer.get_full_name() or subreviewer.username},
+
+You have been assigned a paper for review ("{paper.title}") in the conference '{conference.name}'. 
+
+Please log in to your dashboard to accept or reject the request.
+
+Best regards,
+{user.get_full_name() or user.username}
+Conference Chair/PC Member"""
+                
+                send_mail(subject, message, None, [email])
+                
+                messages.success(request, f'Assignment sent to {subreviewer.get_full_name() or subreviewer.username} for paper "{paper.title}"')
+                
+            except (User.DoesNotExist, Paper.DoesNotExist):
+                messages.error(request, 'Invalid subreviewer or paper selected.')
+            except Exception as e:
+                messages.error(request, f'Error creating assignment: {str(e)}')
+    
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
         "Email", "Administration", "Conference", "News", "papersetu"
@@ -1867,10 +2024,63 @@ def pool_subreviewers(request, conf_id):
         'nav_items': nav_items,
         'active_tab': active_tab,
         'review_dropdown_items': review_dropdown_items,
+        'subreviewers': subreviewers,
+        'search_query': search_query,
+        'selected_expertise': selected_expertise,
+        'selected_availability': selected_availability,
+        'expertise_choices': expertise_choices,
+        'available_papers': available_papers,
     })
 
+@login_required
 def by_pc_member(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
+    
+    # Get all PC members for this conference
+    pc_members = UserConferenceRole.objects.filter(
+        conference=conference,
+        role='pc_member'
+    ).select_related('user').prefetch_related('user__reviews')
+    
+    pc_members_data = []
+    total_completed = 0
+    total_pending = 0
+    total_assignments = 0
+    
+    for pc_member in pc_members:
+        # Get all reviews by this PC member for this conference
+        reviews = Review.objects.filter(
+            reviewer=pc_member.user,
+            paper__conference=conference
+        ).select_related('paper', 'paper__author')
+        
+        assignments = []
+        completed_reviews = 0
+        pending_reviews = 0
+        
+        for review in reviews:
+            assignments.append({
+                'paper': review.paper,
+                'review': review
+            })
+            
+            if review.decision:
+                completed_reviews += 1
+            else:
+                pending_reviews += 1
+        
+        pc_members_data.append({
+            'user': pc_member.user,
+            'assignments': assignments,
+            'completed_reviews': completed_reviews,
+            'pending_reviews': pending_reviews,
+            'total_assignments': len(assignments)
+        })
+        
+        total_completed += completed_reviews
+        total_pending += pending_reviews
+        total_assignments += len(assignments)
+    
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
         "Email", "Administration", "Conference", "News", "papersetu"
@@ -1893,10 +2103,75 @@ def by_pc_member(request, conf_id):
         'nav_items': nav_items,
         'active_tab': active_tab,
         'review_dropdown_items': review_dropdown_items,
+        'pc_members': pc_members_data,
+        'total_completed': total_completed,
+        'total_pending': total_pending,
+        'total_assignments': total_assignments,
     })
 
+@login_required
 def by_submission(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
+    
+    # Get all submissions for this conference
+    papers = Paper.objects.filter(conference=conference).select_related('author').prefetch_related('reviews', 'subreviewer_invites')
+    
+    submissions_data = []
+    total_submitted = 0
+    total_missing = 0
+    total_reviewers = 0
+    
+    for paper in papers:
+        # Get all reviews for this paper (both PC member and subreviewer reviews)
+        reviews = []
+        
+        # PC member reviews
+        pc_reviews = Review.objects.filter(paper=paper).select_related('reviewer')
+        for review in pc_reviews:
+            reviews.append({
+                'review': review,
+                'reviewer': review.reviewer,
+                'is_subreviewer': False,
+                'role': 'PC Member'
+            })
+        
+        # Subreviewer reviews (from accepted invites)
+        subreviewer_invites = paper.subreviewer_invites.filter(status='accepted').select_related('subreviewer')
+        for invite in subreviewer_invites:
+            # Check if there's a review from this subreviewer
+            subreview = Review.objects.filter(paper=paper, reviewer=invite.subreviewer).first()
+            if subreview:
+                reviews.append({
+                    'review': subreview,
+                    'reviewer': invite.subreviewer,
+                    'is_subreviewer': True,
+                    'role': 'Subreviewer'
+                })
+            else:
+                # Add placeholder for missing subreviewer review
+                reviews.append({
+                    'review': None,
+                    'reviewer': invite.subreviewer,
+                    'is_subreviewer': True,
+                    'role': 'Subreviewer'
+                })
+        
+        # Calculate statistics
+        completed_reviews = sum(1 for r in reviews if r['review'] and r['review'].decision)
+        pending_reviews = len(reviews) - completed_reviews
+        
+        submissions_data.append({
+            'paper': paper,
+            'reviews': reviews,
+            'completed_reviews': completed_reviews,
+            'pending_reviews': pending_reviews,
+            'total_reviewers': len(reviews)
+        })
+        
+        total_submitted += completed_reviews
+        total_missing += pending_reviews
+        total_reviewers += len(reviews)
+    
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
         "Email", "Administration", "Conference", "News", "papersetu"
@@ -1919,10 +2194,75 @@ def by_submission(request, conf_id):
         'nav_items': nav_items,
         'active_tab': active_tab,
         'review_dropdown_items': review_dropdown_items,
+        'submissions': submissions_data,
+        'total_submitted': total_submitted,
+        'total_missing': total_missing,
+        'total_reviewers': total_reviewers,
     })
 
+@login_required
 def delete_review(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
+    user = request.user
+    
+    # Check if user is chair (either direct chair field or UserConferenceRole)
+    is_direct_chair = conference.chair == user
+    is_chair_role = UserConferenceRole.objects.filter(user=user, conference=conference, role='chair').exists()
+    is_chair = is_direct_chair or is_chair_role
+    
+    # Allow access for conference chair, staff, or superuser
+    if not (is_chair or user.is_staff or user.is_superuser):
+        nav_items = [
+            "Submissions", "Reviews", "Status", "PC", "Events",
+            "Email", "Administration", "Conference", "News", "papersetu"
+        ]
+        active_tab = "Reviews"
+        review_dropdown_items = [
+            {'label': 'All submissions', 'url': reverse('dashboard:all_submissions', args=[conference.id])},
+            {'label': 'Assigned to me', 'url': reverse('dashboard:assigned_to_me', args=[conference.id])},
+            {'label': 'Subreviewers', 'url': reverse('dashboard:subreviewers', args=[conference.id])},
+            {'label': 'Pool of subreviewers', 'url': reverse('dashboard:pool_subreviewers', args=[conference.id])},
+            {'label': 'By PC member', 'url': reverse('dashboard:by_pc_member', args=[conference.id])},
+            {'label': 'By submission', 'url': reverse('dashboard:by_submission', args=[conference.id])},
+            {'label': 'Delete', 'url': reverse('dashboard:delete_review', args=[conference.id])},
+            {'label': 'Send to authors', 'url': reverse('dashboard:send_to_authors', args=[conference.id])},
+            {'label': 'Missing reviews', 'url': reverse('dashboard:missing_reviews', args=[conference.id])},
+        ]
+        return render(request, 'dashboard/delete_review.html', {
+            'conf_id': conf_id,
+            'conference': conference,
+            'nav_items': nav_items,
+            'active_tab': active_tab,
+            'review_dropdown_items': review_dropdown_items,
+            'is_chair': is_chair,
+            'is_staff': user.is_staff,
+            'is_superuser': user.is_superuser,
+        })
+    
+    # Handle review deletion
+    if request.method == 'POST':
+        review_id = request.POST.get('review_id')
+        if review_id:
+            try:
+                review = Review.objects.get(id=review_id, paper__conference=conference)
+                paper_title = review.paper.title
+                reviewer_name = review.reviewer.get_full_name() or review.reviewer.username
+                
+                # Delete the review
+                review.delete()
+                
+                messages.success(request, f'Review by {reviewer_name} for "{paper_title}" has been deleted successfully.')
+                
+            except Review.DoesNotExist:
+                messages.error(request, 'Review not found.')
+            except Exception as e:
+                messages.error(request, f'Error deleting review: {str(e)}')
+    
+    # Get all reviews for this conference
+    reviews = Review.objects.filter(
+        paper__conference=conference
+    ).select_related('paper', 'paper__author', 'reviewer')
+    
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
         "Email", "Administration", "Conference", "News", "papersetu"
@@ -1945,6 +2285,10 @@ def delete_review(request, conf_id):
         'nav_items': nav_items,
         'active_tab': active_tab,
         'review_dropdown_items': review_dropdown_items,
+        'reviews': reviews,
+        'is_chair': is_chair,
+        'is_staff': user.is_staff,
+        'is_superuser': user.is_superuser,
     })
 
 @login_required
@@ -2034,8 +2378,80 @@ def send_to_authors(request, conf_id):
         'submissions': submissions,
     })
 
+@login_required
 def missing_reviews(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
+    user = request.user
+    
+    # Handle reminder form submission
+    if request.method == 'POST':
+        review_id = request.POST.get('review_id')
+        custom_message = request.POST.get('custom_message', '')
+        
+        if review_id:
+            try:
+                review = Review.objects.get(id=review_id, paper__conference=conference)
+                
+                # Send reminder email
+                subject = f"Review Reminder: '{review.paper.title}'"
+                message = f"""Dear {review.reviewer.get_full_name() or review.reviewer.username},
+
+This is a friendly reminder that you have a pending review for the paper "{review.paper.title}" in the conference '{conference.name}'.
+
+Please log in to your dashboard to complete your review as soon as possible.
+
+{f'Additional message: {custom_message}' if custom_message else ''}
+
+Best regards,
+{user.get_full_name() or user.username}
+Conference Chair/PC Member"""
+                
+                send_mail(subject, message, None, [review.reviewer.email])
+                
+                messages.success(request, f'Reminder sent to {review.reviewer.get_full_name() or review.reviewer.username} for paper "{review.paper.title}"')
+                
+            except Review.DoesNotExist:
+                messages.error(request, 'Review not found.')
+            except Exception as e:
+                messages.error(request, f'Error sending reminder: {str(e)}')
+    
+    # Get all reviews for this conference that are missing (no decision)
+    missing_reviews = Review.objects.filter(
+        paper__conference=conference,
+        decision__isnull=True
+    ).select_related('paper', 'paper__author', 'reviewer')
+    
+    # Calculate overdue and pending statistics
+    from datetime import datetime, timedelta
+    today = datetime.now().date()
+    
+    overdue_count = 0
+    pending_count = 0
+    affected_reviewers = set()
+    affected_papers = set()
+    
+    for review in missing_reviews:
+        affected_reviewers.add(review.reviewer.id)
+        affected_papers.add(review.paper.id)
+        
+        # Calculate if overdue (assuming 30 days from assignment as default deadline)
+        if review.submitted_at:
+            deadline = review.submitted_at.date() + timedelta(days=30)
+            if today > deadline:
+                overdue_count += 1
+                review.is_overdue = True
+                review.days_overdue = (today - deadline).days
+            else:
+                pending_count += 1
+                review.is_overdue = False
+                review.days_overdue = 0
+                review.days_remaining = (deadline - today).days
+        else:
+            pending_count += 1
+            review.is_overdue = False
+            review.days_overdue = 0
+            review.deadline = None
+    
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
         "Email", "Administration", "Conference", "News", "papersetu"
@@ -2058,6 +2474,11 @@ def missing_reviews(request, conf_id):
         'nav_items': nav_items,
         'active_tab': active_tab,
         'review_dropdown_items': review_dropdown_items,
+        'missing_reviews': missing_reviews,
+        'overdue_count': overdue_count,
+        'pending_count': pending_count,
+        'affected_reviewers': len(affected_reviewers),
+        'affected_papers': len(affected_papers),
     })
 
 def status_placeholder(request, conf_id):
@@ -2803,77 +3224,184 @@ def authors_manage(request, conf_id):
 
 @login_required
 def change_review_decision(request, conf_id, submission_id, review_id):
-    """Change review decision - chair and PC members only"""
+    """Change review decision for a specific review"""
     conference = get_object_or_404(Conference, id=conf_id)
     paper = get_object_or_404(Paper, id=submission_id, conference=conference)
     review = get_object_or_404(Review, id=review_id, paper=paper)
     
-    # Check if user has permission to change this review (chair or PC member only)
-    user_roles = UserConferenceRole.objects.filter(user=request.user, conference=conference).values_list('role', flat=True)
-    is_chair = conference.chair == request.user
-    is_pc_member = 'pc_member' in user_roles
-    
-    if not (is_chair or is_pc_member):
-        return render(request, 'dashboard/forbidden.html', {'conference': conference})
-    
-    # Get reviewer details
-    reviewer = review.reviewer
+    # Check if user has permission to change this review
+    if not (conference.chair == request.user or 
+            UserConferenceRole.objects.filter(user=request.user, conference=conference, role='pc_member').exists()):
+        return render(request, 'dashboard/forbidden.html', {'message': 'You do not have permission to change review decisions.'})
     
     if request.method == 'POST':
-        # Handle form submission
-        decision = request.POST.get('decision')
-        rating = request.POST.get('rating')
-        confidence = request.POST.get('confidence')
-        comments = request.POST.get('comments')
-        remarks = request.POST.get('remarks')
-        
-        # Validate required fields
-        if not decision or decision not in ['accept', 'reject']:
-            messages.error(request, 'Please select a valid decision.')
-        else:
-            # Update the review
-            review.decision = decision
-            review.rating = int(rating) if rating else None
-            review.confidence = int(confidence) if confidence else None
-            review.comments = comments or ''
-            review.remarks = remarks or ''
+        new_decision = request.POST.get('decision')
+        if new_decision in ['accept', 'reject']:
+            review.decision = new_decision
             review.save()
-            
-            # Create notification for the reviewer about the change
-            Notification.objects.create(
-                recipient=reviewer,
-                notification_type='paper_review',
-                title=f'Review Decision Modified - {paper.title}',
-                message=f'Your review decision for paper "{paper.title}" has been modified by a PC member.',
-                related_paper=paper,
-                related_conference=conference,
-                related_review=review
-            )
-            
-            # Create notification for the paper author if decision changed
-            if review.decision in ['accept', 'reject']:
-                Notification.objects.create(
-                    recipient=paper.author,
-                    notification_type='paper_review',
-                    title=f'Review Decision Updated - {paper.title}',
-                    message=f'A review decision for your paper "{paper.title}" has been updated.',
-                    related_paper=paper,
-                    related_conference=conference
-                )
-            
-            messages.success(request, f'Review decision has been successfully updated for {reviewer.get_full_name() or reviewer.username}.')
-            return redirect('dashboard:conference_submissions', conf_id=conf_id)
+            messages.success(request, f'Review decision changed to {new_decision.title()}')
+            return redirect('dashboard:manage_submission', conf_id=conf_id, submission_id=submission_id)
     
     context = {
         'conference': conference,
         'paper': paper,
         'review': review,
-        'reviewer': reviewer,
-        'is_chair': is_chair,
-        'is_pc_member': is_pc_member,
     }
-    
     return render(request, 'dashboard/change_review_decision.html', context)
+
+@login_required
+def add_review(request, conf_id, submission_id):
+    """Add a new review for a submission"""
+    conference = get_object_or_404(Conference, id=conf_id)
+    paper = get_object_or_404(Paper, id=submission_id, conference=conference)
+    
+    # Check if user is assigned to review this paper
+    user_review = Review.objects.filter(paper=paper, reviewer=request.user).first()
+    if not user_review:
+        messages.error(request, 'You are not assigned to review this paper.')
+        return redirect('dashboard:all_submissions', conf_id=conf_id)
+    
+    if request.method == 'POST':
+        decision = request.POST.get('decision')
+        comments = request.POST.get('comments', '')
+        rating = request.POST.get('rating')
+        confidence = request.POST.get('confidence')
+        
+        if decision in ['accept', 'reject']:
+            user_review.decision = decision
+            user_review.comments = comments
+            if rating:
+                user_review.rating = int(rating)
+            if confidence:
+                user_review.confidence = int(confidence)
+            user_review.save()
+            
+            messages.success(request, 'Review submitted successfully!')
+            return redirect('dashboard:all_submissions', conf_id=conf_id)
+        else:
+            messages.error(request, 'Please select a valid decision.')
+    
+    context = {
+        'conference': conference,
+        'paper': paper,
+        'review': user_review,
+    }
+    return render(request, 'dashboard/add_review.html', context)
+
+@login_required
+def update_review(request, conf_id, submission_id):
+    """Update an existing review"""
+    conference = get_object_or_404(Conference, id=conf_id)
+    paper = get_object_or_404(Paper, id=submission_id, conference=conference)
+    
+    # Check if user has a review for this paper
+    user_review = Review.objects.filter(paper=paper, reviewer=request.user).first()
+    if not user_review:
+        messages.error(request, 'You do not have a review for this paper.')
+        return redirect('dashboard:all_submissions', conf_id=conf_id)
+    
+    if request.method == 'POST':
+        decision = request.POST.get('decision')
+        comments = request.POST.get('comments', '')
+        rating = request.POST.get('rating')
+        confidence = request.POST.get('confidence')
+        
+        if decision in ['accept', 'reject']:
+            user_review.decision = decision
+            user_review.comments = comments
+            if rating:
+                user_review.rating = int(rating)
+            if confidence:
+                user_review.confidence = int(confidence)
+            user_review.save()
+            
+            messages.success(request, 'Review updated successfully!')
+            return redirect('dashboard:all_submissions', conf_id=conf_id)
+        else:
+            messages.error(request, 'Please select a valid decision.')
+    
+    context = {
+        'conference': conference,
+        'paper': paper,
+        'review': user_review,
+    }
+    return render(request, 'dashboard/update_review.html', context)
+
+@login_required
+def contact_subreviewer(request, conf_id, submission_id, subreviewer_id):
+    """Contact a subreviewer for a submission"""
+    conference = get_object_or_404(Conference, id=conf_id)
+    paper = get_object_or_404(Paper, id=submission_id, conference=conference)
+    subreviewer = get_object_or_404(User, id=subreviewer_id)
+    
+    # Check if user is assigned to review this paper
+    user_review = Review.objects.filter(paper=paper, reviewer=request.user).first()
+    if not user_review:
+        messages.error(request, 'You are not assigned to review this paper.')
+        return redirect('dashboard:all_submissions', conf_id=conf_id)
+    
+    # Check if subreviewer is assigned to this paper
+    subreviewer_invite = SubreviewerInvite.objects.filter(
+        paper=paper, 
+        subreviewer=subreviewer
+    ).first()
+    
+    if not subreviewer_invite:
+        messages.error(request, 'This subreviewer is not assigned to this paper.')
+        return redirect('dashboard:all_submissions', conf_id=conf_id)
+    
+    if request.method == 'POST':
+        subject = request.POST.get('subject')
+        message_text = request.POST.get('message')
+        
+        if subject and message_text:
+            # Send email to subreviewer
+            from django.core.mail import send_mail
+            send_mail(
+                subject=subject,
+                message=message_text,
+                from_email=request.user.email,
+                recipient_list=[subreviewer.email],
+            )
+            messages.success(request, f'Email sent to {subreviewer.get_full_name() or subreviewer.username}')
+            return redirect('dashboard:all_submissions', conf_id=conf_id)
+        else:
+            messages.error(request, 'Please provide both subject and message.')
+    
+    context = {
+        'conference': conference,
+        'paper': paper,
+        'subreviewer': subreviewer,
+        'subreviewer_invite': subreviewer_invite,
+    }
+    return render(request, 'dashboard/contact_subreviewer.html', context)
+
+@login_required
+def view_submission_details(request, conf_id, submission_id):
+    """View detailed information about a submission"""
+    conference = get_object_or_404(Conference, id=conf_id)
+    paper = get_object_or_404(Paper, id=submission_id, conference=conference)
+    
+    # Check if user is assigned to review this paper
+    user_review = Review.objects.filter(paper=paper, reviewer=request.user).first()
+    if not user_review:
+        messages.error(request, 'You are not assigned to review this paper.')
+        return redirect('dashboard:all_submissions', conf_id=conf_id)
+    
+    # Get all reviews for this paper
+    reviews = paper.reviews.all().select_related('reviewer')
+    
+    # Get subreviewer invites
+    subreviewer_invites = paper.subreviewer_invites.all().select_related('subreviewer', 'invited_by')
+    
+    context = {
+        'conference': conference,
+        'paper': paper,
+        'user_review': user_review,
+        'reviews': reviews,
+        'subreviewer_invites': subreviewer_invites,
+    }
+    return render(request, 'dashboard/view_submission_details.html', context)
 
 class AdminFeatureBaseView(LoginRequiredMixin, View):
     feature_key = None  # e.g., 'config', 'registration', etc.
