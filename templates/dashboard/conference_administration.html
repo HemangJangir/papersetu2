@@ -53,7 +53,7 @@
                         <p class="text-sm text-gray-600">Configure conference settings</p>
                     </div>
                 </div>
-                <a href="{% url 'dashboard:conference_configuration' conference.id %}" 
+                <a href="{% url 'dashboard:admin_config' conference.id %}" 
                    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
                     <span>Configure</span>
                     <i class="fas fa-arrow-right ml-2"></i>
@@ -73,7 +73,7 @@
                         <p class="text-sm text-gray-600">Manage participant registration</p>
                     </div>
                 </div>
-                <a href="{% url 'dashboard:registration_application_step1' conference.id %}" 
+                <a href="{% url 'dashboard:admin_registration' conference.id %}" 
                    class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
                     <span>Manage</span>
                     <i class="fas fa-arrow-right ml-2"></i>
@@ -93,7 +93,7 @@
                         <p class="text-sm text-gray-600">Additional administrative tools</p>
                     </div>
                 </div>
-                <a href="#" 
+                <a href="{% url 'dashboard:admin_utilities' conference.id %}" 
                    class="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
                     <span>Access</span>
                     <i class="fas fa-arrow-right ml-2"></i>
@@ -113,7 +113,7 @@
                         <p class="text-sm text-gray-600">Conference analytics and reports</p>
                     </div>
                 </div>
-                <a href="#" 
+                <a href="{% url 'dashboard:admin_analytics' conference.id %}" 
                    class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
                     <span>View Reports</span>
                     <i class="fas fa-arrow-right ml-2"></i>
@@ -133,7 +133,7 @@
                         <p class="text-sm text-gray-600">Conference statistics overview</p>
                     </div>
                 </div>
-                <a href="#" 
+                <a href="{% url 'dashboard:admin_statistics' conference.id %}" 
                    class="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors">
                     <span>View Stats</span>
                     <i class="fas fa-arrow-right ml-2"></i>
@@ -153,7 +153,7 @@
                         <p class="text-sm text-gray-600">Demo mode settings</p>
                     </div>
                 </div>
-                <a href="#" 
+                <a href="{% url 'dashboard:admin_demo' conference.id %}" 
                    class="inline-flex items-center px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-lg hover:bg-yellow-700 transition-colors">
                     <span>Configure</span>
                     <i class="fas fa-arrow-right ml-2"></i>
@@ -173,7 +173,7 @@
                         <p class="text-sm text-gray-600">Manage conference tracks</p>
                     </div>
                 </div>
-                <a href="#" 
+                <a href="{% url 'dashboard:admin_tracks' conference.id %}" 
                    class="inline-flex items-center px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors">
                     <span>Manage</span>
                     <i class="fas fa-arrow-right ml-2"></i>
@@ -193,7 +193,7 @@
                         <p class="text-sm text-gray-600">Create Call for Papers</p>
                     </div>
                 </div>
-                <a href="#" 
+                <a href="{% url 'dashboard:admin_cfp' conference.id %}" 
                    class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">
                     <span>Create</span>
                     <i class="fas fa-arrow-right ml-2"></i>
@@ -213,7 +213,7 @@
                         <p class="text-sm text-gray-600">Define the conference program</p>
                     </div>
                 </div>
-                <a href="#" 
+                <a href="{% url 'dashboard:admin_program' conference.id %}" 
                    class="inline-flex items-center px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-lg hover:bg-pink-700 transition-colors">
                     <span>Create</span>
                     <i class="fas fa-arrow-right ml-2"></i>
@@ -233,7 +233,7 @@
                         <p class="text-sm text-gray-600">Generate downloadable proceedings</p>
                     </div>
                 </div>
-                <a href="#" 
+                <a href="{% url 'dashboard:admin_proceedings' conference.id %}" 
                    class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors">
                     <span>Generate</span>
                     <i class="fas fa-arrow-right ml-2"></i>

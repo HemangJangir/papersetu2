@@ -1,5 +1,8 @@
 from django.urls import path
 from . import views
+from .views import (
+    ConfigFeatureView, RegistrationFeatureView, UtilitiesFeatureView, AnalyticsFeatureView, StatisticsFeatureView, DemoFeatureView, TracksFeatureView, CFPFeatureView, ProgramFeatureView, ProceedingsFeatureView
+)
 
 app_name = 'dashboard'
 
@@ -27,7 +30,7 @@ urlpatterns = [
     path('conference/<int:conf_id>/registration/confirmation/', views.registration_confirmation, name='registration_confirmation'),
     path('conference/<int:conf_id>/registration/status/', views.registration_status, name='registration_status'),
     # Analytics URLs
-    path('conference/<int:conf_id>/analytics/', views.analytics_dashboard, name='analytics_dashboard'),
+    path('conference/<int:conf_id>/analytics/', AnalyticsFeatureView.as_view(), name='admin_analytics'),
     path('conference/<int:conf_id>/analytics/export/', views.analytics_export, name='analytics_export'),
     # Other Utilities URLs
     path('conference/<int:conf_id>/utilities/accepted-submissions/', views.accepted_submissions_list, name='accepted_submissions'),
@@ -70,6 +73,15 @@ urlpatterns = [
     path('conference/<int:conf_id>/submissions/<int:submission_id>/view/', views.view_paper_submission, name='view_paper_submission'),
     path('conference/<int:conf_id>/submission/<int:submission_id>/manage/', views.manage_submission, name='manage_submission'),
     path('conference/<int:conf_id>/submission/<int:submission_id>/review/<int:review_id>/change/', views.change_review_decision, name='change_review_decision'),
+    path('conference/<int:conf_id>/config/', ConfigFeatureView.as_view(), name='admin_config'),
+    path('conference/<int:conf_id>/registration/', RegistrationFeatureView.as_view(), name='admin_registration'),
+    path('conference/<int:conf_id>/utilities/', UtilitiesFeatureView.as_view(), name='admin_utilities'),
+    path('conference/<int:conf_id>/statistics/', StatisticsFeatureView.as_view(), name='admin_statistics'),
+    path('conference/<int:conf_id>/demo/', DemoFeatureView.as_view(), name='admin_demo'),
+    path('conference/<int:conf_id>/tracks/', TracksFeatureView.as_view(), name='admin_tracks'),
+    path('conference/<int:conf_id>/cfp/', CFPFeatureView.as_view(), name='admin_cfp'),
+    path('conference/<int:conf_id>/program/', ProgramFeatureView.as_view(), name='admin_program'),
+    path('conference/<int:conf_id>/proceedings/', ProceedingsFeatureView.as_view(), name='admin_proceedings'),
 ]
 
 urlpatterns += [

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Send Email - PaperSetu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-10 mt-16 mb-12">
+        <h1 class="text-3xl font-extrabold text-blue-700 mb-8 flex items-center gap-3">
+            <i class="fas fa-envelope"></i> Confirm Email
+        </h1>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="recipients" value="{{ recipients_raw }}">
+            <input type="hidden" name="subject" value="{{ subject }}">
+            <input type="hidden" name="body" value="{{ body }}">
+            {% if attachment %}
+                <input type="hidden" name="attachment" value="{{ attachment }}">
+            {% endif %}
+            <input type="hidden" name="confirm_send" value="1">
+            <div class="mb-6">
+                <label class="block font-semibold mb-2">Subject:</label>
+                <div class="bg-gray-100 rounded px-4 py-2">{{ subject }}</div>
+            </div>
+            <div class="mb-6">
+                <label class="block font-semibold mb-2">Message:</label>
+                <div class="bg-gray-100 rounded px-4 py-2 whitespace-pre-line">{{ body }}</div>
+            </div>
+            {% if attachment %}
+            <div class="mb-6">
+                <label class="block font-semibold mb-2">Attachment:</label>
+                <div class="bg-gray-100 rounded px-4 py-2">{{ attachment.name }}</div>
+            </div>
+            {% endif %}
+            <div class="mb-6">
+                <label class="block font-semibold mb-2">Recipients:</label>
+                <table class="min-w-full border rounded-lg bg-gray-100">
+                    <thead>
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 bg-gray-200">Name</th>
+                            <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 bg-gray-200">Email</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in recipients %}
+                        <tr>
+                            <td class="px-3 py-2">{{ user.get_full_name|default:user.username }}</td>
+                            <td class="px-3 py-2">{{ user.email }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-end gap-4 border-t border-gray-100 pt-6">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold shadow">Send Email</button>
+            </div>
+        </form>
+    </div>
+</body>
+</html> 
