@@ -5,61 +5,190 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PaperSetu - Academic Conference Platform</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        background: radial-gradient(ellipse at 60% 20%, #2d1e4f 0%, #181c2f 60%, #0a0f1a 100%);
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+      .glass {
+        background: rgba(30, 41, 59, 0.55);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border-radius: 28px;
+        border: 2px solid rgba(255,255,255,0.10);
+      }
+      .neon {
+        box-shadow: 0 0 32px 8px #a21caf99, 0 0 80px 16px #06b6d499;
+      }
+      .hero-gradient {
+        background: linear-gradient(90deg, #a21caf 0%, #06b6d4 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-fill-color: transparent;
+        filter: drop-shadow(0 0 16px #a21caf88);
+        animation: shimmer 2.5s infinite linear;
+      }
+      @keyframes shimmer {
+        0% { filter: drop-shadow(0 0 16px #a21caf88); }
+        50% { filter: drop-shadow(0 0 32px #06b6d488); }
+        100% { filter: drop-shadow(0 0 16px #a21caf88); }
+      }
+      .particle {
+        position: absolute;
+        border-radius: 50%;
+        opacity: 0.4;
+        pointer-events: none;
+        animation: float 10s infinite ease-in-out;
+        filter: blur(2px);
+      }
+      @keyframes float {
+        0% { transform: translateY(0) scale(1); }
+        50% { transform: translateY(-60px) scale(1.1); }
+        100% { transform: translateY(0) scale(1); }
+      }
+      .hero-float {
+        animation: heroFloat 7s ease-in-out infinite alternate;
+      }
+      @keyframes heroFloat {
+        0% { transform: translateY(0) scale(1); }
+        100% { transform: translateY(-30px) scale(1.04); }
+      }
+      .animated-btn {
+        background: linear-gradient(90deg, #06b6d4 0%, #a21caf 100%);
+        color: #fff;
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 0 24px 4px #a21caf55, 0 0 40px 8px #06b6d455;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .animated-btn:before {
+        content: '';
+        position: absolute;
+        top: -50%; left: -50%; width: 200%; height: 200%;
+        background: conic-gradient(from 90deg, #a21caf, #06b6d4, #a21caf, #06b6d4, #a21caf);
+        opacity: 0.25;
+        z-index: 0;
+        animation: btnGlow 3s linear infinite;
+      }
+      @keyframes btnGlow {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .animated-btn span {
+        position: relative;
+        z-index: 1;
+      }
+      .animated-btn:hover {
+        transform: scale(1.07) rotate(-1deg);
+        box-shadow: 0 0 48px 8px #a21cafcc, 0 0 80px 16px #06b6d4cc;
+      }
+      .hero-img-glow {
+        box-shadow: 0 0 64px 8px #a21caf88, 0 0 128px 16px #06b6d488;
+        border: 3px solid rgba(162,28,175,0.25);
+        background: linear-gradient(120deg,rgba(162,28,175,0.08),rgba(6,182,212,0.08));
+      }
+      .starfield {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+      }
+      .star {
+        position: absolute;
+        width: 2px; height: 2px;
+        background: #fff;
+        border-radius: 50%;
+        opacity: 0.7;
+        animation: twinkle 3s infinite alternate;
+      }
+      @keyframes twinkle {
+        0% { opacity: 0.7; }
+        50% { opacity: 1; }
+        100% { opacity: 0.7; }
+      }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen flex flex-col justify-between">
+<body class="relative text-white font-sans">
+    <!-- Animated Starfield -->
+    <div class="starfield">
+      <div class="star" style="top:10%;left:20%;animation-delay:0s;"></div>
+      <div class="star" style="top:30%;left:80%;animation-delay:1s;"></div>
+      <div class="star" style="top:60%;left:50%;animation-delay:2s;"></div>
+      <div class="star" style="top:80%;left:10%;animation-delay:1.5s;"></div>
+      <div class="star" style="top:70%;left:70%;animation-delay:2.5s;"></div>
+      <div class="star" style="top:40%;left:40%;animation-delay:0.5s;"></div>
+      <div class="star" style="top:20%;left:60%;animation-delay:2.2s;"></div>
+    </div>
+    <!-- Animated Background Particles -->
+    <div class="fixed inset-0 -z-10">
+      <div class="particle" style="width:120px;height:120px;left:10vw;top:20vh;background:#a21caf;animation-delay:0s;"></div>
+      <div class="particle" style="width:60px;height:60px;left:70vw;top:10vh;background:#06b6d4;animation-delay:2s;"></div>
+      <div class="particle" style="width:90px;height:90px;left:50vw;top:60vh;background:#f472b6;animation-delay:1s;"></div>
+      <div class="particle" style="width:140px;height:140px;left:80vw;top:80vh;background:#38bdf8;animation-delay:3s;"></div>
+      <div class="particle" style="width:50px;height:50px;left:30vw;top:80vh;background:#a5b4fc;animation-delay:4s;"></div>
+    </div>
     <!-- Hero Section -->
-    <section class="flex flex-col md:flex-row items-center justify-between px-8 py-16 max-w-6xl mx-auto">
-        <div class="md:w-1/2 mb-10 md:mb-0">
-            <h1 class="text-5xl font-extrabold text-blue-700 mb-4 leading-tight">Empower Your Academic Journey</h1>
-            <p class="text-xl text-gray-600 mb-8">PaperSetu streamlines conference submissions, peer reviews, and collaboration for authors, reviewers, and chairs—all in one place.</p>
+    <section class="flex flex-col md:flex-row items-center justify-between px-6 py-20 max-w-7xl mx-auto min-h-[80vh]">
+        <div class="md:w-1/2 mb-12 md:mb-0 animate-fadein-left">
+            <h1 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight tracking-tight drop-shadow-lg hero-gradient" style="font-family: 'Montserrat', sans-serif;">
+                Empower Your Academic Journey
+            </h1>
+            <p class="text-2xl text-gray-200 mb-10 font-medium" style="text-shadow:0 2px 16px #0006;">PaperSetu streamlines conference submissions, peer reviews, and collaboration for authors, reviewers, and chairs—all in one place.</p>
+            <div class="flex flex-wrap gap-6">
             {% if user.is_authenticated %}
-                <a href="/home/" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow hover:bg-blue-700 transition">Go to Dashboard</a>
-                <a href="/conference/create/" class="inline-block bg-green-600 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow hover:bg-green-700 transition ml-4">Create Conference</a>
+                <a href="/home/" class="animated-btn px-10 py-4 font-bold text-lg shadow-xl focus:outline-none focus:ring-2 focus:ring-cyan-400 animate-fadein-up"><span>Go to Dashboard</span></a>
+                <a href="/conference/create/" class="animated-btn px-10 py-4 font-bold text-lg shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-400 animate-fadein-up" style="background:linear-gradient(90deg,#a21caf 0%,#06b6d4 100%);"><span>Create Conference</span></a>
             {% else %}
-                <a href="/accounts/login/" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow hover:bg-blue-700 transition">Get Started</a>
-                <a href="/accounts/login/?next=/home/" class="inline-block bg-green-600 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow hover:bg-green-700 transition ml-4">Create Conference</a>
+                <a href="/accounts/login/" class="animated-btn px-10 py-4 font-bold text-lg shadow-xl focus:outline-none focus:ring-2 focus:ring-cyan-400 animate-fadein-up"><span>Get Started</span></a>
+                <a href="/accounts/login/?next=/home/" class="animated-btn px-10 py-4 font-bold text-lg shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-400 animate-fadein-up" style="background:linear-gradient(90deg,#a21caf 0%,#06b6d4 100%);"><span>Create Conference</span></a>
             {% endif %}
+            </div>
         </div>
-        <div class="md:w-1/2 flex justify-center">
-            <img src="https://images.pexels.com/photos/2305084/pexels-photo-2305084.jpeg" alt="Hero Visual" class="w-110 max-w-full rounded-xl shadow-lg border border-blue-100">
+        <div class="md:w-1/2 flex justify-center items-center relative animate-fadein-right">
+            <div class="glass p-4 rounded-3xl shadow-2xl hero-float neon">
+                <img src="https://images.pexels.com/photos/2305084/pexels-photo-2305084.jpeg" alt="Hero Visual" class="w-[420px] max-w-full rounded-2xl shadow-xl border-2 border-blue-400/30 hero-img-glow">
+            </div>
         </div>
     </section>
     <!-- Features Section -->
-    <section class="bg-white py-16 px-8 shadow-inner">
-        <div class="max-w-5xl mx-auto">
-            <h2 class="text-3xl font-bold text-blue-700 mb-8 text-center">Why Choose PaperSetu?</h2>
-            <div class="grid md:grid-cols-3 gap-10">
-                <div class="bg-blue-50 rounded-xl p-6 shadow flex flex-col items-center">
-                    <img src="https://img.icons8.com/ios-filled/100/2563eb/conference-call.png" class="w-16 h-16 mb-4" alt="Easy Conference Management">
-                    <h3 class="text-xl font-semibold text-blue-700 mb-2">Easy Conference Management</h3>
-                    <p class="text-gray-600 text-center">Create, manage, and track conferences with intuitive tools for chairs and organizers.</p>
-                </div>
-                <div class="bg-blue-50 rounded-xl p-6 shadow flex flex-col items-center">
-                    <img src="https://img.icons8.com/ios-filled/100/2563eb/checked--v1.png" class="w-16 h-16 mb-4" alt="Seamless Peer Review">
-                    <h3 class="text-xl font-semibold text-blue-700 mb-2">Seamless Peer Review</h3>
-                    <p class="text-gray-600 text-center">Streamlined paper submission, reviewer assignment, and transparent review workflow.</p>
-                </div>
-                <div class="bg-blue-50 rounded-xl p-6 shadow flex flex-col items-center">
-                    <img src="https://img.icons8.com/ios-filled/100/2563eb/collaboration.png" class="w-16 h-16 mb-4" alt="Collaboration & Notifications">
-                    <h3 class="text-xl font-semibold text-blue-700 mb-2">Collaboration & Notifications</h3>
-                    <p class="text-gray-600 text-center">Real-time notifications and dashboards for authors, reviewers, and chairs.</p>
-                </div>
+    <section class="glass max-w-6xl mx-auto my-16 py-14 px-8 shadow-2xl">
+        <h2 class="text-3xl md:text-4xl font-bold text-pink-300 mb-10 text-center tracking-wide">Why Choose PaperSetu?</h2>
+        <div class="grid md:grid-cols-3 gap-10">
+            <div class="bg-white/10 glass rounded-2xl p-8 shadow flex flex-col items-center border border-pink-400/10">
+                <img src="https://img.icons8.com/ios-filled/100/a21caf/conference-call.png" class="w-16 h-16 mb-4" alt="Easy Conference Management">
+                <h3 class="text-xl font-semibold text-pink-200 mb-2">Easy Conference Management</h3>
+                <p class="text-gray-200 text-center">Create, manage, and track conferences with intuitive tools for chairs and organizers.</p>
+            </div>
+            <div class="bg-white/10 glass rounded-2xl p-8 shadow flex flex-col items-center border border-cyan-400/10">
+                <img src="https://img.icons8.com/ios-filled/100/06b6d4/checked--v1.png" class="w-16 h-16 mb-4" alt="Seamless Peer Review">
+                <h3 class="text-xl font-semibold text-cyan-200 mb-2">Seamless Peer Review</h3>
+                <p class="text-gray-200 text-center">Streamlined paper submission, reviewer assignment, and transparent review workflow.</p>
+            </div>
+            <div class="bg-white/10 glass rounded-2xl p-8 shadow flex flex-col items-center border border-blue-400/10">
+                <img src="https://img.icons8.com/ios-filled/100/38bdf8/collaboration.png" class="w-16 h-16 mb-4" alt="Collaboration & Notifications">
+                <h3 class="text-xl font-semibold text-blue-200 mb-2">Collaboration & Notifications</h3>
+                <p class="text-gray-200 text-center">Real-time notifications and dashboards for authors, reviewers, and chairs.</p>
             </div>
         </div>
     </section>
     <!-- Gallery/Showcase Section -->
-    <section class="py-16 px-8 max-w-5xl mx-auto">
-        <h2 class="text-2xl font-bold text-blue-700 mb-8 text-center">Showcase</h2>
+    <section class="max-w-6xl mx-auto py-16 px-8">
+        <h2 class="text-2xl md:text-3xl font-bold text-pink-200 mb-8 text-center">Showcase</h2>
         <div class="grid md:grid-cols-3 gap-8">
-            <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80" class="rounded-xl shadow-lg w-full h-48 object-cover" alt="Showcase 1">
-            <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80" class="rounded-xl shadow-lg w-full h-48 object-cover" alt="Showcase 2">
-            <img src="https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=400&q=80" class="rounded-xl shadow-lg w-full h-48 object-cover" alt="Showcase 3">
+            <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80" class="rounded-2xl shadow-xl w-full h-48 object-cover glass" alt="Showcase 1">
+            <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80" class="rounded-2xl shadow-xl w-full h-48 object-cover glass" alt="Showcase 2">
+            <img src="https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=400&q=80" class="rounded-2xl shadow-xl w-full h-48 object-cover glass" alt="Showcase 3">
         </div>
     </section>
     <!-- Footer -->
-    <footer class="bg-blue-700 text-white py-6 mt-8">
-        <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center px-4">
-            <div class="mb-4 md:mb-0">
+    <footer class="bg-gradient-to-r from-purple-900 to-blue-900 text-white py-8 mt-8 glass border-t border-pink-400/20">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center px-4">
+            <div class="mb-4 md:mb-0 flex items-center gap-4">
                 <img src="https://sdmntpreastus.oaiusercontent.com/files/00000000-34dc-61f9-8e3a-40507fb3e4a8/raw?se=2025-06-26T20%3A40%3A27Z&sp=r&sv=2024-08-04&sr=b&scid=f51c0b24-2622-5c35-973f-203d713665bf&skoid=02b7f7b5-29f8-416a-aeb6-99464748559d&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-26T07%3A48%3A21Z&ske=2025-06-27T07%3A48%3A21Z&sks=b&skv=2024-08-04&sig=BSYIOXuJ%2BGMHIbSfj9QD5fU7re%2BO1GLG0Gq54sbwm%2Bk%3D" alt="PaperSetu Logo" class="w-24 h-auto mb-4">
                 <span class="font-bold text-lg">PaperSetu</span> &copy; {% now "Y" %}
             </div>
@@ -70,5 +199,45 @@
             </div>
         </div>
     </footer>
+    <script>
+      // Animate fade in
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.animate-fadein-left').forEach(el => {
+          el.style.opacity = 0;
+          el.style.transform = 'translateX(-40px)';
+          setTimeout(() => {
+            el.style.transition = 'all 1s cubic-bezier(.4,2,.3,1)';
+            el.style.opacity = 1;
+            el.style.transform = 'translateX(0)';
+          }, 200);
+        });
+        document.querySelectorAll('.animate-fadein-right').forEach(el => {
+          el.style.opacity = 0;
+          el.style.transform = 'translateX(40px)';
+          setTimeout(() => {
+            el.style.transition = 'all 1s cubic-bezier(.4,2,.3,1)';
+            el.style.opacity = 1;
+            el.style.transform = 'translateX(0)';
+          }, 400);
+        });
+        document.querySelectorAll('.animate-fadein-up').forEach((el, i) => {
+          el.style.opacity = 0;
+          el.style.transform = 'translateY(40px)';
+          setTimeout(() => {
+            el.style.transition = 'all 1s cubic-bezier(.4,2,.3,1)';
+            el.style.opacity = 1;
+            el.style.transform = 'translateY(0)';
+          }, 600 + i*100);
+        });
+        // Parallax effect for particles
+        document.addEventListener('mousemove', function(e) {
+          const x = e.clientX / window.innerWidth - 0.5;
+          const y = e.clientY / window.innerHeight - 0.5;
+          document.querySelectorAll('.particle').forEach((el, i) => {
+            el.style.transform += ` translate(${x*30*(i+1)}px,${y*30*(i+1)}px)`;
+          });
+        });
+      });
+    </script>
 </body>
 </html> 

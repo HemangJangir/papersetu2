@@ -36,7 +36,7 @@ class ConferenceAdmin(admin.ModelAdmin):
             if hasattr(conference, 'contact_email') and conference.contact_email and '@' in conference.contact_email:
                 recipients.append(conference.contact_email)
             if recipients:
-                conference_url = request.build_absolute_uri(reverse('dashboard:chair_conference_detail', args=[conference.id]))
+                conference_url = request.build_absolute_uri(reverse('dashboard:conference_submissions', args=[conference.id]))
                 send_mail(
                     'Conference Approved',
                     f'Your conference "{conference.name}" has been approved! Manage it here: {conference_url}',
@@ -58,7 +58,7 @@ class ConferenceAdmin(admin.ModelAdmin):
                     recipients.append(conference.contact_email)
                 if recipients:
                     from django.urls import reverse
-                    conference_url = request.build_absolute_uri(reverse('dashboard:chair_conference_detail', args=[conference.id]))
+                    conference_url = request.build_absolute_uri(reverse('dashboard:conference_submissions', args=[conference.id]))
                     send_mail(
                         'Conference Approved',
                         f'Your conference "{conference.name}" has been approved! Manage it here: {conference_url}',

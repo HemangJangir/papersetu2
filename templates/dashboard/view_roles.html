@@ -17,7 +17,11 @@
       <td class="px-4 py-2">{{ role.role|title }}</td>
       <td class="px-4 py-2">{{ role.conference.status|title }}</td>
       <td class="px-4 py-2">
-        <a href="{% url 'dashboard:chair_conference_detail' role.conference.id %}?role={{ role.role }}" class="text-blue-600 underline">Go</a>
+        {% if role.role == 'chair' %}
+          <a href="{% url 'dashboard:conference_submissions' role.conference.id %}?role={{ role.role }}" class="text-blue-600 underline">Go</a>
+        {% else %}
+          <span class="text-gray-400">No access</span>
+        {% endif %}
       </td>
     </tr>
     {% empty %}

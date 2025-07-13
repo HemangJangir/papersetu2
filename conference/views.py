@@ -155,7 +155,7 @@ def join_conference(request, invite_link):
         role_links = []
         for role in roles:
             if role == 'chair':
-                url = reverse('dashboard:chair_conference_detail', args=[conference.id])
+                url = reverse('dashboard:conference_submissions', args=[conference.id])
                 label = 'Chair'
             elif role == 'author':
                 url = reverse('conference:author_dashboard', args=[conference.id])
@@ -244,7 +244,7 @@ def choose_conference_role(request, conference_id):
     role_links = []
     for role in roles:
         if role == 'chair':
-            url = reverse('dashboard:chair_conference_detail', args=[conference.id])
+            url = reverse('dashboard:conference_submissions', args=[conference.id])
             label = 'Chair'
         elif role == 'author':
             url = reverse('conference:author_dashboard', args=[conference.id])

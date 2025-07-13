@@ -36,20 +36,7 @@ from conference.forms import ConferenceForm
 import zipfile
 from django.utils.text import slugify
 from io import BytesIO
-
-# Email log model for sent emails
-class PCEmailLog(models.Model):
-    conference = models.ForeignKey(Conference, on_delete=models.CASCADE)
-    sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_pc_emails')
-    subject = models.CharField(max_length=200)
-    body = models.TextField()
-    recipients = models.TextField()  # Comma-separated emails
-    sent_at = models.DateTimeField(auto_now_add=True)
-    attachment_name = models.CharField(max_length=255, blank=True, null=True)
-    template_used = models.ForeignKey(EmailTemplate, on_delete=models.SET_NULL, null=True, blank=True)
-
-    def __str__(self):
-        return f"{self.subject} to {self.recipients} at {self.sent_at}"
+from .models import PCEmailLog
 
 class PCSendEmailForm(forms.Form):
     RECIPIENT_TYPE_CHOICES = [
@@ -313,39 +300,6 @@ def review_paper(request, paper_id):
         'review_dropdown_items': review_dropdown_items,
     }
     return render(request, 'dashboard/review_paper.html', context)
-
-@login_required
-def chair_conference_detail(request, conf_id):
-    conference = get_object_or_404(Conference, id=conf_id)
-    if conference.chair != request.user or not conference.is_approved:
-        return redirect('dashboard:dashboard')
-
-    from conference.forms import ConferenceInfoForm
-    message = None
-    if request.method == 'POST':
-        form = ConferenceInfoForm(request.POST, instance=conference)
-        if form.is_valid():
-            form.save()
-            message = 'Conference information updated successfully.'
-            # Refetch the updated instance
-            conference.refresh_from_db()
-        else:
-            message = 'Please correct the errors below.'
-    else:
-        form = ConferenceInfoForm(instance=conference)
-
-    nav_items = [
-        "Submissions", "Reviews", "Status", "PC", "Events",
-        "Email", "Administration", "Conference", "News", "papersetu"
-    ]
-    context = {
-        'conference': conference,
-        'form': form,
-        'message': message,
-        'nav_items': nav_items,
-        'active_tab': 'Conference',
-    }
-    return render(request, 'dashboard/chair_conference_detail.html', context)
 
 @require_POST
 @login_required
@@ -2197,6 +2151,7 @@ def events_placeholder(request, conf_id):
         'review_dropdown_items': review_dropdown_items,
     })
 
+@login_required
 def email_placeholder(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
     nav_items = [
@@ -2215,11 +2170,14 @@ def email_placeholder(request, conf_id):
         {'label': 'Send to authors', 'url': reverse('dashboard:send_to_authors', args=[conference.id])},
         {'label': 'Missing reviews', 'url': reverse('dashboard:missing_reviews', args=[conference.id])},
     ]
+    # Fetch email logs for this conference
+    email_logs = PCEmailLog.objects.filter(conference=conference).order_by('-sent_at')[:50]
     return render(request, 'dashboard/email_placeholder.html', {
         'conference': conference,
         'nav_items': nav_items,
         'active_tab': active_tab,
         'review_dropdown_items': review_dropdown_items,
+        'email_logs': email_logs,
     })
 
 def news_placeholder(request, conf_id):
@@ -2295,7 +2253,7 @@ class CreateConferenceView(LoginRequiredMixin, CreateView):
     form_class = ConferenceForm
     template_name = 'conference/create_conference.html'
     def get_success_url(self):
-        return reverse('dashboard:chair_conference_detail', args=[self.object.id])
+        return reverse('dashboard:conference_submissions', args=[self.object.id])
     def form_valid(self, form):
         conference = form.save(commit=False)
         conference.chair = self.request.user
