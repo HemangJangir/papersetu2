@@ -1,0 +1,16 @@
+{% for author in author_list %}
+<tr class="hover:bg-red-50 transition text-sm">
+  <td class="p-3 text-center">
+    <input type="checkbox" name="selected_authors" value="{{ author.email }}" class="form-checkbox h-4 w-4 text-red-600">
+  </td>
+  <td class="p-3 font-medium text-gray-900">{{ author.name }}</td>
+  <td class="p-3 text-gray-700">{{ author.email }}</td>
+  <td class="p-3 text-gray-700">
+    {% for paper in author.papers %}
+      {{ paper.title }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  </td>
+</tr>
+{% empty %}
+<tr><td colspan="4" class="p-4 text-gray-500 text-center">No authors found.</td></tr>
+{% endfor %} 

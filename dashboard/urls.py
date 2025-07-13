@@ -60,8 +60,17 @@ urlpatterns = [
     path('view-preprints/', views.view_preprints, name='view_preprints'),
     path('view-slides/', views.view_slides, name='view_slides'),
     path('news/', views.read_news, name='read_news'),
-    path('settings/', views.settings, name='settings'),
+    path('settings/', views.user_settings, name='settings'),
     path('terms/', views.read_terms, name='read_terms'),
+    path('conference/<int:conf_id>/delete-submissions/', views.delete_submissions, name='delete_submissions'),
+    path('conference/<int:conf_id>/authors/', views.authors_list, name='authors_list'),
+    path('conference/<int:conf_id>/authors/table/', views.authors_list_table, name='authors_list_table'),
+    path('conference/<int:conf_id>/authors/manage/', views.authors_manage, name='authors_manage'),
+    path('conference/<int:conf_id>/delete-submissions/table/', views.delete_submissions_table, name='delete_submissions_table'),
+    path('conference/<int:conf_id>/download-submissions/', views.download_submissions, name='download_submissions'),
+    path('conference/<int:conf_id>/submissions/<int:submission_id>/view/', views.view_paper_submission, name='view_paper_submission'),
+    path('conference/<int:conf_id>/submission/<int:submission_id>/manage/', views.manage_submission, name='manage_submission'),
+    path('conference/<int:conf_id>/submission/<int:submission_id>/review/<int:review_id>/change/', views.change_review_decision, name='change_review_decision'),
 ]
 
 urlpatterns += [

@@ -1,0 +1,35 @@
+{% extends 'dashboard/dashboard.html' %}
+{% block content %}
+<div class="max-w-7xl mx-auto p-4 text-sm">
+  <div class="flex items-center justify-between mb-4 gap-4">
+    <h2 class="text-xl font-bold text-red-700">Delete Submissions</h2>
+    <button type="submit" form="deleteAuthorsForm" class="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-semibold shadow hover:bg-red-700">Delete Selected</button>
+  </div>
+  <form method="post" id="deleteAuthorsForm">
+    {% csrf_token %}
+    <div class="flex items-center gap-2 mb-3">
+      <input type="text" id="deleteAuthorSearch" name="search" placeholder="Search author or email..." class="border px-3 py-2 rounded w-72 focus:ring-2 focus:ring-red-400" hx-get="{% url 'dashboard:delete_submissions_table' conference.id %}" hx-target="#deleteAuthorsTableBody" hx-trigger="keyup changed delay:300ms" />
+      <button class="bg-gray-100 px-3 py-2 rounded hover:bg-gray-200" hx-get="{% url 'dashboard:delete_submissions_table' conference.id %}" hx-target="#deleteAuthorsTableBody" hx-trigger="click" title="Refresh">
+        <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582M20 20v-5h-.581M5 19A9 9 0 0119 5" /></svg>
+      </button>
+      <span id="deleteAuthorsTableSpinner" class="hidden ml-2"><svg class="animate-spin h-4 w-4 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg></span>
+    </div>
+    <div class="overflow-x-auto bg-white rounded-lg shadow-sm border divide-y divide-gray-200">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="p-3 text-center font-semibold">Select</th>
+            <th class="p-3 font-semibold">Author</th>
+            <th class="p-3 font-semibold">Email</th>
+            <th class="p-3 font-semibold">Submission(s)</th>
+          </tr>
+        </thead>
+        <tbody id="deleteAuthorsTableBody" hx-get="{% url 'dashboard:delete_submissions_table' conference.id %}" hx-trigger="load" hx-indicator="#deleteAuthorsTableSpinner">
+          <!-- Table body loaded by htmx -->
+        </tbody>
+      </table>
+    </div>
+  </form>
+</div>
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+{% endblock %} 

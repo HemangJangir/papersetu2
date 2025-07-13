@@ -30,41 +30,215 @@
     </div>
 {% endif %}
 
-<!-- Administration Panel -->
-<section class="bg-white rounded-lg shadow">
-    <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">
-            <i class="fas fa-cogs text-blue-600 mr-2"></i>
-            Administration
+<!-- Administration Cards Grid -->
+<section class="bg-white rounded-xl shadow-md p-6">
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">
+            <i class="fas fa-cogs text-blue-600 mr-3"></i>
+            Administration Features
         </h2>
-        <p class="text-sm text-gray-600 mt-1">System administration tools and configuration</p>
+        <p class="text-gray-600">Manage and configure your conference settings</p>
     </div>
-    <div class="p-6">
-        <div class="grid gap-2">
-            {% for item in admin_menu_items %}
-            <div class="border-l-4 {% if item.highlighted %}border-blue-500 bg-blue-50{% else %}border-gray-200 bg-gray-50{% endif %} hover:bg-blue-50 transition-colors">
-                {% if item.url == 'dashboard:conference_configuration' or item.url == 'dashboard:registration_application_step1' %}
-                    <a href="{% url item.url conference.id %}" class="block p-4">
-                {% else %}
-                    <a href="{{ item.url }}" class="block p-4">
-                {% endif %}
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <i class="{{ item.icon }} {% if item.highlighted %}text-blue-600{% else %}text-gray-600{% endif %} text-lg"></i>
-                            <div>
-                                <h3 class="text-base font-medium {% if item.highlighted %}text-blue-900{% else %}text-gray-900{% endif %}">{{ item.name }}</h3>
-                                <p class="text-sm {% if item.highlighted %}text-blue-700{% else %}text-gray-600{% endif %}">{{ item.description }}</p>
-                            </div>
-                        </div>
-                        {% if item.highlighted %}
-                            <i class="fas fa-arrow-right text-blue-600"></i>
-                        {% else %}
-                            <i class="fas fa-chevron-right text-gray-400"></i>
-                        {% endif %}
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <!-- Config Card -->
+        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:ring-2 hover:ring-blue-200 border border-gray-100">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-cog text-blue-600 text-xl"></i>
                     </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Config</h3>
+                        <p class="text-sm text-gray-600">Configure conference settings</p>
+                    </div>
+                </div>
+                <a href="{% url 'dashboard:conference_configuration' conference.id %}" 
+                   class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                    <span>Configure</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
                 </a>
             </div>
-            {% endfor %}
+        </div>
+
+        <!-- Registration Card -->
+        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:ring-2 hover:ring-green-200 border border-gray-100">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-user-plus text-green-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Registration</h3>
+                        <p class="text-sm text-gray-600">Manage participant registration</p>
+                    </div>
+                </div>
+                <a href="{% url 'dashboard:registration_application_step1' conference.id %}" 
+                   class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+                    <span>Manage</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Other Utilities Card -->
+        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:ring-2 hover:ring-purple-200 border border-gray-100">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-tools text-purple-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Other Utilities</h3>
+                        <p class="text-sm text-gray-600">Additional administrative tools</p>
+                    </div>
+                </div>
+                <a href="#" 
+                   class="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
+                    <span>Access</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Analytics Card -->
+        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:ring-2 hover:ring-indigo-200 border border-gray-100">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-chart-line text-indigo-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Analytics</h3>
+                        <p class="text-sm text-gray-600">Conference analytics and reports</p>
+                    </div>
+                </div>
+                <a href="#" 
+                   class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                    <span>View Reports</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Card -->
+        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:ring-2 hover:ring-orange-200 border border-gray-100">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-chart-bar text-orange-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Statistics</h3>
+                        <p class="text-sm text-gray-600">Conference statistics overview</p>
+                    </div>
+                </div>
+                <a href="#" 
+                   class="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors">
+                    <span>View Stats</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Demo Version Card -->
+        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:ring-2 hover:ring-yellow-200 border border-gray-100">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-play-circle text-yellow-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Demo Version</h3>
+                        <p class="text-sm text-gray-600">Demo mode settings</p>
+                    </div>
+                </div>
+                <a href="#" 
+                   class="inline-flex items-center px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-lg hover:bg-yellow-700 transition-colors">
+                    <span>Configure</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Tracks Card -->
+        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:ring-2 hover:ring-teal-200 border border-gray-100">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-route text-teal-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Tracks</h3>
+                        <p class="text-sm text-gray-600">Manage conference tracks</p>
+                    </div>
+                </div>
+                <a href="#" 
+                   class="inline-flex items-center px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors">
+                    <span>Manage</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Create CFP Card -->
+        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:ring-2 hover:ring-red-200 border border-gray-100">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-bullhorn text-red-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Create CFP</h3>
+                        <p class="text-sm text-gray-600">Create Call for Papers</p>
+                    </div>
+                </div>
+                <a href="#" 
+                   class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">
+                    <span>Create</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Create Program Card -->
+        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:ring-2 hover:ring-pink-200 border border-gray-100">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-calendar-alt text-pink-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Create Program</h3>
+                        <p class="text-sm text-gray-600">Define the conference program</p>
+                    </div>
+                </div>
+                <a href="#" 
+                   class="inline-flex items-center px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-lg hover:bg-pink-700 transition-colors">
+                    <span>Create</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Create Proceedings Card -->
+        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:ring-2 hover:ring-gray-200 border border-gray-100">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-book text-gray-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Create Proceedings</h3>
+                        <p class="text-sm text-gray-600">Generate downloadable proceedings</p>
+                    </div>
+                </div>
+                <a href="#" 
+                   class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors">
+                    <span>Generate</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
         </div>
     </div>
 </section>

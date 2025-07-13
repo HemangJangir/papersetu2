@@ -17,10 +17,12 @@ from conference.models import Review
 
 class SubreviewerReviewForm(forms.Form):
     RATING_CHOICES = [
-        (3, 'Strong Accept (3)'),
-        (2, 'Accept (2)'),
-        (1, 'Weak Accept (1)'),
-        (0, 'Borderline Paper (0)'),
+        (5, 'Strong Accept (5)'),
+        (4, 'Accept (4)'),
+        (3, 'Weak Accept (3)'),
+        (2, 'Weak Reject (2)'),
+        (1, 'Reject (1)'),
+        (0, 'Strong Reject (0)'),
     ]
     CONFIDENCE_CHOICES = [
         (5, 'Expert'),
@@ -29,10 +31,29 @@ class SubreviewerReviewForm(forms.Form):
         (2, 'Low'),
         (1, 'None'),
     ]
-    rating = forms.ChoiceField(choices=RATING_CHOICES, widget=forms.RadioSelect)
-    comments = forms.CharField(widget=forms.Textarea, required=True)
-    confidence = forms.ChoiceField(choices=CONFIDENCE_CHOICES, widget=forms.RadioSelect)
-    remarks = forms.CharField(widget=forms.Textarea, required=False, label='Remarks for PC Member')
+    rating = forms.ChoiceField(
+        choices=RATING_CHOICES, 
+        widget=forms.RadioSelect,
+        required=True,
+        help_text="Select your recommendation for this paper"
+    )
+    comments = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 4, 'placeholder': 'Provide constructive feedback for the authors...'}),
+        required=True,
+        help_text="Comments that will be shared with the authors"
+    )
+    confidence = forms.ChoiceField(
+        choices=CONFIDENCE_CHOICES, 
+        widget=forms.RadioSelect,
+        required=True,
+        help_text="Your confidence level in this assessment"
+    )
+    remarks = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Confidential remarks for PC members only...'}),
+        required=False, 
+        label='Confidential Remarks for PC Members',
+        help_text="These remarks are only visible to PC members and chairs"
+    )
 
 @login_required
 def create_conference(request):
@@ -377,14 +398,20 @@ def subreviewer_review_form(request, invite_id):
         return redirect('conference:subreviewer_dashboard', conference_id=invite.paper.conference.id)
     if request.method == 'POST':
         form = SubreviewerReviewForm(request.POST)
-        decision = request.POST.get('decision')
-        if form.is_valid() and decision in ['accept', 'reject']:
+        if form.is_valid():
+            # Determine decision based on rating
+            rating = int(form.cleaned_data['rating'])
+            if rating >= 3:  # Strong Accept, Accept, Weak Accept
+                decision = 'accept'
+            else:  # Weak Reject, Reject, Strong Reject
+                decision = 'reject'
+            
             Review.objects.create(
                 paper=invite.paper,
                 reviewer=request.user,
                 decision=decision,
                 comments=form.cleaned_data['comments'],
-                rating=form.cleaned_data['rating'],
+                rating=rating,
                 confidence=form.cleaned_data['confidence'],
                 remarks=form.cleaned_data['remarks'],
             )
