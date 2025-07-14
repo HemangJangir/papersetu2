@@ -14,6 +14,72 @@ from django.urls import reverse
 from django.utils import timezone
 from django import forms
 from conference.models import Review
+from django.core.mail import EmailMessage
+from django.conf import settings
+from .models import Author
+
+def send_paper_submission_emails(paper, conference, corresponding_author):
+    """
+    Send notification emails to chair and corresponding author when a paper is submitted.
+    """
+    try:
+        # Email to the chair
+        if conference.chair and conference.chair.email:
+            chair_subject = f"New Paper Submission - {conference.name}"
+            chair_message = f"""Dear {conference.chair.get_full_name() or conference.chair.username},
+
+A new paper has been submitted to your conference \"{conference.name}\".
+
+Paper Details:
+- Title: {paper.title}
+- Corresponding Author: {corresponding_author.first_name} {corresponding_author.last_name} ({corresponding_author.email})
+- Submitted: {paper.submitted_at.strftime('%Y-%m-%d %H:%M:%S')}
+- Abstract: {paper.abstract[:200]}{'...' if len(paper.abstract) > 200 else ''}
+
+You can view and manage this submission through your conference dashboard.
+
+Best regards,
+PaperSetu Team"""
+
+            send_mail(
+                subject=chair_subject,
+                message=chair_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[conference.chair.email],
+                fail_silently=True,
+            )
+
+        # Email to the corresponding author
+        if corresponding_author.email:
+            author_subject = f"Paper Submission Confirmation - {conference.name}"
+            author_message = f"""Dear {corresponding_author.first_name} {corresponding_author.last_name},
+
+Your paper has been successfully submitted to the conference \"{conference.name}\".
+
+Paper Details:
+- Title: {paper.title}
+- Conference: {conference.name}
+- Submission Date: {paper.submitted_at.strftime('%Y-%m-%d %H:%M:%S')}
+- Status: Submitted
+
+Your paper is now under review. You will be notified of any updates regarding your submission.
+
+Thank you for your submission!
+
+Best regards,
+{conference.name} Conference Team"""
+
+            send_mail(
+                subject=author_subject,
+                message=author_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[corresponding_author.email],
+                fail_silently=True,
+            )
+
+    except Exception as e:
+        # Log the error but don't break the submission process
+        print(f"Error sending paper submission emails: {e}")
 
 class SubreviewerReviewForm(forms.Form):
     RATING_CHOICES = [
@@ -126,8 +192,13 @@ def submit_paper(request, conference_id):
             paper = form.save(commit=False)
             paper.author = request.user
             paper.conference = conference
+            paper.submitted_at = timezone.now() # Add submitted_at field
             paper.save()
             UserConferenceRole.objects.get_or_create(user=request.user, conference=conference, role='author')
+            # Get corresponding author
+            corresponding_author = Author.objects.filter(paper=paper, is_corresponding=True).first()
+            if corresponding_author:
+                send_paper_submission_emails(paper, conference, corresponding_author)
             messages.success(request, 'Paper submitted successfully!')
             return redirect('dashboard:dashboard')
     else:
@@ -284,6 +355,7 @@ def author_dashboard(request, conference_id):
             paper = paper_form.save(commit=False)
             paper.author = user
             paper.conference = conference
+            paper.submitted_at = timezone.now() # Add submitted_at field
             paper.save()
             # Save authors
             corresponding_found = False
@@ -308,6 +380,10 @@ def author_dashboard(request, conference_id):
             paper.keywords = paper_form.cleaned_data['keywords']
             paper.save()
             UserConferenceRole.objects.get_or_create(user=user, conference=conference, role='author')
+            # Get corresponding author
+            corresponding_author = Author.objects.filter(paper=paper, is_corresponding=True).first()
+            if corresponding_author:
+                send_paper_submission_emails(paper, conference, corresponding_author)
             message = 'Paper submitted successfully!'
             papers = Paper.objects.filter(conference=conference, author=user)
         else:

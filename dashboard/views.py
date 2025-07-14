@@ -3145,7 +3145,7 @@ def manage_submission(request, conf_id, submission_id):
     main_author = paper.author
     additional_authors = paper.authors.all()
     
-    # Get reviews for this paper with all details
+    # Always fetch the latest reviews for this paper
     reviews = paper.reviews.all().select_related('reviewer').order_by('-submitted_at')
     
     # Get subreviewers for this paper
@@ -3181,6 +3181,7 @@ def manage_submission(request, conf_id, submission_id):
             )
             
             messages.success(request, f'Paper has been {decision}ed successfully.')
+            # Always redirect to manage_submission to see updated data
             return redirect('dashboard:manage_submission', conf_id=conf_id, submission_id=submission_id)
     
     context = {
@@ -3236,11 +3237,25 @@ def change_review_decision(request, conf_id, submission_id, review_id):
     
     if request.method == 'POST':
         new_decision = request.POST.get('decision')
+        rating = request.POST.get('rating')
+        confidence = request.POST.get('confidence')
+        comments = request.POST.get('comments', '')
+        remarks = request.POST.get('remarks', '')
         if new_decision in ['accept', 'reject']:
             review.decision = new_decision
-            review.save()
-            messages.success(request, f'Review decision changed to {new_decision.title()}')
-            return redirect('dashboard:manage_submission', conf_id=conf_id, submission_id=submission_id)
+        if rating is not None and rating != '':
+            review.rating = int(rating)
+        else:
+            review.rating = None
+        if confidence is not None and confidence != '':
+            review.confidence = int(confidence)
+        else:
+            review.confidence = None
+        review.comments = comments
+        review.remarks = remarks
+        review.save()
+        messages.success(request, 'Review updated successfully!')
+        return redirect('dashboard:manage_submission', conf_id=conf_id, submission_id=submission_id)
     
     context = {
         'conference': conference,
@@ -3251,79 +3266,69 @@ def change_review_decision(request, conf_id, submission_id, review_id):
 
 @login_required
 def add_review(request, conf_id, submission_id):
-    """Add a new review for a submission"""
     conference = get_object_or_404(Conference, id=conf_id)
     paper = get_object_or_404(Paper, id=submission_id, conference=conference)
-    
-    # Check if user is assigned to review this paper
     user_review = Review.objects.filter(paper=paper, reviewer=request.user).first()
+    is_chair = conference.chair == request.user
     if not user_review:
         messages.error(request, 'You are not assigned to review this paper.')
         return redirect('dashboard:all_submissions', conf_id=conf_id)
-    
     if request.method == 'POST':
-        decision = request.POST.get('decision')
         comments = request.POST.get('comments', '')
         rating = request.POST.get('rating')
         confidence = request.POST.get('confidence')
-        
-        if decision in ['accept', 'reject']:
-            user_review.decision = decision
-            user_review.comments = comments
-            if rating:
-                user_review.rating = int(rating)
-            if confidence:
-                user_review.confidence = int(confidence)
-            user_review.save()
-            
-            messages.success(request, 'Review submitted successfully!')
-            return redirect('dashboard:all_submissions', conf_id=conf_id)
-        else:
-            messages.error(request, 'Please select a valid decision.')
-    
+        # Only chair can set decision
+        if is_chair:
+            decision = request.POST.get('decision')
+            if decision in ['accept', 'reject']:
+                user_review.decision = decision
+        user_review.comments = comments
+        if rating:
+            user_review.rating = int(rating)
+        if confidence:
+            user_review.confidence = int(confidence)
+        user_review.save()
+        messages.success(request, 'Review submitted successfully!')
+        return redirect('dashboard:all_submissions', conf_id=conf_id)
     context = {
         'conference': conference,
         'paper': paper,
         'review': user_review,
+        'is_chair': is_chair,
     }
     return render(request, 'dashboard/add_review.html', context)
 
 @login_required
 def update_review(request, conf_id, submission_id):
-    """Update an existing review"""
     conference = get_object_or_404(Conference, id=conf_id)
     paper = get_object_or_404(Paper, id=submission_id, conference=conference)
-    
-    # Check if user has a review for this paper
     user_review = Review.objects.filter(paper=paper, reviewer=request.user).first()
+    is_chair = conference.chair == request.user
     if not user_review:
         messages.error(request, 'You do not have a review for this paper.')
         return redirect('dashboard:all_submissions', conf_id=conf_id)
-    
     if request.method == 'POST':
-        decision = request.POST.get('decision')
         comments = request.POST.get('comments', '')
         rating = request.POST.get('rating')
         confidence = request.POST.get('confidence')
-        
-        if decision in ['accept', 'reject']:
-            user_review.decision = decision
-            user_review.comments = comments
-            if rating:
-                user_review.rating = int(rating)
-            if confidence:
-                user_review.confidence = int(confidence)
-            user_review.save()
-            
-            messages.success(request, 'Review updated successfully!')
-            return redirect('dashboard:all_submissions', conf_id=conf_id)
-        else:
-            messages.error(request, 'Please select a valid decision.')
-    
+        # Only chair can set decision
+        if is_chair:
+            decision = request.POST.get('decision')
+            if decision in ['accept', 'reject']:
+                user_review.decision = decision
+        user_review.comments = comments
+        if rating:
+            user_review.rating = int(rating)
+        if confidence:
+            user_review.confidence = int(confidence)
+        user_review.save()
+        messages.success(request, 'Review updated successfully!')
+        return redirect('dashboard:all_submissions', conf_id=conf_id)
     context = {
         'conference': conference,
         'paper': paper,
         'review': user_review,
+        'is_chair': is_chair,
     }
     return render(request, 'dashboard/update_review.html', context)
 
