@@ -38,6 +38,8 @@ from django.utils.text import slugify
 from io import BytesIO
 from .models import PCEmailLog
 from conference.models import ConferenceFeatureToggle, FEATURE_CHOICES
+from openpyxl import Workbook
+from django.utils.encoding import smart_str
 
 class PCSendEmailForm(forms.Form):
     RECIPIENT_TYPE_CHOICES = [
@@ -494,6 +496,15 @@ Conference Chair"""
                         email_msg.send(fail_silently=False)
                         message = f'Invitation sent successfully to {name} ({email}).'
                         message_type = 'success'
+                        # Log the invitation email
+                        PCEmailLog.objects.create(
+                            subject=subject,
+                            body=body,
+                            recipients=email,
+                            conference=conference,
+                            sender=request.user,
+                            attachment_name='',
+                        )
                     except Exception as e:
                         error_msg = str(e)
                         if 'SSL' in error_msg or 'CERTIFICATE' in error_msg:
@@ -602,6 +613,15 @@ Conference Chair"""
                             )
                             email_msg.send(fail_silently=False)
                             success_count += 1
+                            # Log the invitation email
+                            PCEmailLog.objects.create(
+                                subject=subject,
+                                body=body,
+                                recipients=email,
+                                conference=conference,
+                                sender=request.user,
+                                attachment_name='',
+                            )
                         except Exception as e:
                             error_msg = str(e)
                             if 'SSL' in error_msg or 'CERTIFICATE' in error_msg:
@@ -624,6 +644,15 @@ Conference Chair"""
                                     server.quit()
                                     
                                     success_count += 1
+                                    # Log the invitation email
+                                    PCEmailLog.objects.create(
+                                        subject=subject,
+                                        body=body,
+                                        recipients=email,
+                                        conference=conference,
+                                        sender=request.user,
+                                        attachment_name='',
+                                    )
                                 except Exception as ssl_error:
                                     error_messages.append(f'SSL Certificate error for {email}: {ssl_error}. Please check email configuration or use console backend for development.')
                                     error_count += 1
@@ -1605,6 +1634,15 @@ class PCSendEmailView(FormView):
                     email_msg.attach(attachment.name, attachment.read(), attachment.content_type)
                 email_msg.send(fail_silently=False)
                 sent_count += 1
+                # Log the email
+                PCEmailLog.objects.create(
+                    subject=subject,
+                    body=personalized_body,
+                    recipients=user.email,
+                    conference=self.conference,
+                    sender=request.user,
+                    attachment_name=attachment.name if attachment else '',
+                )
             except Exception as e:
                 errors.append(f"Failed to send to {user.email}: {e}")
         if sent_count:
@@ -1827,6 +1865,15 @@ def subreviewers(request, conf_id):
                     message=body,
                     from_email=None,
                     recipient_list=[email],
+                )
+                # Log the subreviewer invitation email
+                PCEmailLog.objects.create(
+                    subject=f"Paper Review Assignment: '{paper.title}'",
+                    body=body,
+                    recipients=email,
+                    conference=conference,
+                    sender=request.user,
+                    attachment_name='',
                 )
                 message = f"Assignment email sent to {subreviewer.get_full_name() or subreviewer.username} for paper '{paper.title}'."
                 message_type = 'success'
@@ -2348,14 +2395,23 @@ def send_to_authors(request, conf_id):
         # Send email to each author
         for author in unique_authors:
             personalized_message = message.replace('{*NAME*}', author['name'])
-            email = EmailMessage(
+            email_obj = EmailMessage(
                 subject=subject,
                 body=personalized_message,
                 to=[author['email']],
             )
             if attachment:
-                email.attach(attachment.name, attachment.read(), attachment.content_type)
-            email.send(fail_silently=False)
+                email_obj.attach(attachment.name, attachment.read(), attachment.content_type)
+            email_obj.send(fail_silently=False)
+            # Log the author notification email
+            PCEmailLog.objects.create(
+                subject=subject,
+                body=personalized_message,
+                recipients=author['email'],
+                conference=conference,
+                sender=request.user,
+                attachment_name=attachment.name if attachment else '',
+            )
         # Show popup and redirect
         author_names = ', '.join([a['name'] for a in unique_authors]) or 'No authors selected'
         return render(request, 'dashboard/send_to_authors.html', {
@@ -2550,8 +2606,8 @@ def email_placeholder(request, conf_id):
         {'label': 'Send to authors', 'url': reverse('dashboard:send_to_authors', args=[conference.id])},
         {'label': 'Missing reviews', 'url': reverse('dashboard:missing_reviews', args=[conference.id])},
     ]
-    # Fetch email logs for this conference
-    email_logs = PCEmailLog.objects.filter(conference=conference).order_by('-sent_at')[:50]
+    # Fetch email logs for this conference, only those sent by the chair
+    email_logs = PCEmailLog.objects.filter(conference=conference, sender=conference.chair).order_by('-sent_at')[:50]
     return render(request, 'dashboard/email_placeholder.html', {
         'conference': conference,
         'nav_items': nav_items,
@@ -3465,3 +3521,71 @@ class ProgramFeatureView(AdminFeatureBaseView):
 class ProceedingsFeatureView(AdminFeatureBaseView):
     feature_key = 'proceedings'
     template_name = 'dashboard/admin_features/proceedings.html'
+
+@login_required
+def export_submissions_excel(request, conf_id):
+    """
+    Export all submissions for a conference as an Excel (.xlsx) file with selected columns.
+    Columns are selected by the chair via POST.
+    """
+    from django.http import HttpResponse
+    conference = get_object_or_404(Conference, id=conf_id)
+    user = request.user
+    if conference.chair != user:
+        return render(request, 'dashboard/forbidden.html', {
+            'message': 'Only the conference chair can export submissions.'
+        })
+    if request.method != 'POST':
+        return redirect('dashboard:export_submissions_excel_options', conf_id=conf_id)
+    # Get selected columns from POST
+    selected_columns = request.POST.getlist('columns')
+    # Map keys to Paper model fields or computed values
+    column_map = {
+        'authors': lambda paper: paper.author.get_full_name() or paper.author.username or str(paper.author),
+        'title': lambda paper: paper.title,
+        'paper_id': lambda paper: paper.id,
+        'time': lambda paper: paper.submitted_at.strftime('%Y-%m-%d %H:%M') if hasattr(paper, 'submitted_at') and paper.submitted_at else '',
+        'decision': lambda paper: getattr(paper, 'status', ''),
+        'keywords': lambda paper: getattr(paper, 'keywords', ''),
+        'abstract': lambda paper: getattr(paper, 'abstract', ''),
+    }
+    # Prepare workbook
+    papers = Paper.objects.filter(conference=conference).select_related('author').order_by('id')
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Submissions'
+    # Header
+    ws.append([col.capitalize() if col != 'paper_id' else 'Paper ID' for col in selected_columns])
+    for paper in papers:
+        ws.append([smart_str(column_map[col](paper)) for col in selected_columns])
+    # Prepare response
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{conference.acronym}_submissions.xlsx"'
+    wb.save(response)
+    return response
+
+@login_required
+def export_submissions_excel_options(request, conf_id):
+    """
+    Render a page for the chair to select which columns to include in the Excel export.
+    """
+    conference = get_object_or_404(Conference, id=conf_id)
+    user = request.user
+    if conference.chair != user:
+        return render(request, 'dashboard/forbidden.html', {
+            'message': 'Only the conference chair can export submissions.'
+        })
+    # Define available columns (could be made dynamic if needed)
+    available_columns = [
+        {'key': 'authors', 'label': 'Authors', 'default': True},
+        {'key': 'title', 'label': 'Title', 'default': True},
+        {'key': 'paper_id', 'label': 'Paper ID', 'default': True},
+        {'key': 'time', 'label': 'Time', 'default': False},
+        {'key': 'decision', 'label': 'Decision', 'default': False},
+        {'key': 'keywords', 'label': 'Keywords', 'default': False},
+        {'key': 'abstract', 'label': 'Abstract', 'default': False},
+    ]
+    return render(request, 'dashboard/export_submissions_excel_options.html', {
+        'conference': conference,
+        'available_columns': available_columns,
+    })
