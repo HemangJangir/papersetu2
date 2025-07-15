@@ -166,6 +166,10 @@
             <a href="/dashboard/conference/{{ conference.id }}/download-submissions/" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center">
                 <i class="fas fa-download mr-2"></i> Download Submissions
             </a>
+            <!-- Submissions in Excel -->
+            <a href="{% url 'dashboard:export_submissions_excel_options' conf_id=conference.id %}" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center">
+                <i class="fas fa-file-excel mr-2"></i> Submissions in Excel
+            </a>
         </div>
 
         <!-- Search and Filter Controls -->
