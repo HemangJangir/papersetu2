@@ -1,243 +1,321 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PaperSetu - Academic Conference Platform</title>
+    <title>PaperSetu - Conference Management Reinvented</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Swiper CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <!-- AOS CSS for scroll effects -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" />
+    <!-- Rellax JS for parallax effect -->
+    <script src="https://cdn.jsdelivr.net/npm/rellax@1.12.1/rellax.min.js"></script>
     <style>
-      body {
-        background: radial-gradient(ellipse at 60% 20%, #2d1e4f 0%, #181c2f 60%, #0a0f1a 100%);
-        min-height: 100vh;
-        overflow-x: hidden;
-      }
       .glass {
-        background: rgba(30, 41, 59, 0.55);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        border-radius: 28px;
-        border: 2px solid rgba(255,255,255,0.10);
+        background: rgba(255,255,255,0.7);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+        backdrop-filter: blur(8px);
+        border-radius: 1.5rem;
+        border: 1px solid rgba(255,255,255,0.18);
       }
-      .neon {
-        box-shadow: 0 0 32px 8px #a21caf99, 0 0 80px 16px #06b6d499;
-      }
-      .hero-gradient {
-        background: linear-gradient(90deg, #a21caf 0%, #06b6d4 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        text-fill-color: transparent;
-        filter: drop-shadow(0 0 16px #a21caf88);
-        animation: shimmer 2.5s infinite linear;
-      }
-      @keyframes shimmer {
-        0% { filter: drop-shadow(0 0 16px #a21caf88); }
-        50% { filter: drop-shadow(0 0 32px #06b6d488); }
-        100% { filter: drop-shadow(0 0 16px #a21caf88); }
-      }
-      .particle {
+      .animated-bg {
         position: absolute;
-        border-radius: 50%;
-        opacity: 0.4;
-        pointer-events: none;
-        animation: float 10s infinite ease-in-out;
-        filter: blur(2px);
-      }
-      @keyframes float {
-        0% { transform: translateY(0) scale(1); }
-        50% { transform: translateY(-60px) scale(1.1); }
-        100% { transform: translateY(0) scale(1); }
-      }
-      .hero-float {
-        animation: heroFloat 7s ease-in-out infinite alternate;
-      }
-      @keyframes heroFloat {
-        0% { transform: translateY(0) scale(1); }
-        100% { transform: translateY(-30px) scale(1.04); }
-      }
-      .animated-btn {
-        background: linear-gradient(90deg, #06b6d4 0%, #a21caf 100%);
-        color: #fff;
-        border: none;
-        border-radius: 16px;
-        box-shadow: 0 0 24px 4px #a21caf55, 0 0 40px 8px #06b6d455;
-        position: relative;
-        overflow: hidden;
-        transition: transform 0.2s, box-shadow 0.2s;
-      }
-      .animated-btn:before {
-        content: '';
-        position: absolute;
-        top: -50%; left: -50%; width: 200%; height: 200%;
-        background: conic-gradient(from 90deg, #a21caf, #06b6d4, #a21caf, #06b6d4, #a21caf);
-        opacity: 0.25;
         z-index: 0;
-        animation: btnGlow 3s linear infinite;
-      }
-      @keyframes btnGlow {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      .animated-btn span {
-        position: relative;
-        z-index: 1;
-      }
-      .animated-btn:hover {
-        transform: scale(1.07) rotate(-1deg);
-        box-shadow: 0 0 48px 8px #a21cafcc, 0 0 80px 16px #06b6d4cc;
-      }
-      .hero-img-glow {
-        box-shadow: 0 0 64px 8px #a21caf88, 0 0 128px 16px #06b6d488;
-        border: 3px solid rgba(162,28,175,0.25);
-        background: linear-gradient(120deg,rgba(162,28,175,0.08),rgba(6,182,212,0.08));
-      }
-      .starfield {
-        position: absolute;
-        inset: 0;
-        z-index: -1;
         pointer-events: none;
       }
-      .star {
-        position: absolute;
-        width: 2px; height: 2px;
-        background: #fff;
-        border-radius: 50%;
-        opacity: 0.7;
-        animation: twinkle 3s infinite alternate;
+      .blob {
+        filter: blur(32px);
+        opacity: 0.5;
+        animation: blobMove 18s infinite alternate ease-in-out;
       }
-      @keyframes twinkle {
-        0% { opacity: 0.7; }
-        50% { opacity: 1; }
-        100% { opacity: 0.7; }
+      @keyframes blobMove {
+        0% { transform: translateY(0) scale(1); }
+        100% { transform: translateY(-40px) scale(1.1); }
       }
     </style>
 </head>
-<body class="relative text-white font-sans">
-    <!-- Animated Starfield -->
-    <div class="starfield">
-      <div class="star" style="top:10%;left:20%;animation-delay:0s;"></div>
-      <div class="star" style="top:30%;left:80%;animation-delay:1s;"></div>
-      <div class="star" style="top:60%;left:50%;animation-delay:2s;"></div>
-      <div class="star" style="top:80%;left:10%;animation-delay:1.5s;"></div>
-      <div class="star" style="top:70%;left:70%;animation-delay:2.5s;"></div>
-      <div class="star" style="top:40%;left:40%;animation-delay:0.5s;"></div>
-      <div class="star" style="top:20%;left:60%;animation-delay:2.2s;"></div>
+<body class="bg-gray-50 text-gray-900">
+
+  <!-- Header Section -->
+  <header class="sticky top-0 z-50 bg-gray-50/90 backdrop-blur shadow-sm transition-shadow">
+    <div class="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
+      <div class="flex items-center gap-2">
+        <img src="{% static 'images/LOGO BG.png' %}" alt="PaperSetu Logo" class="w-10 h-10 rounded-full shadow bg-white">
+        <span class="text-2xl font-bold text-indigo-800">PaperSetu</span>
+      </div>
+      <nav class="hidden md:flex items-center gap-8">
+        <a href="#" class="nav-link font-medium transition-colors duration-200 ease-in-out hover:text-blue-500 hover:underline underline-offset-4">Home</a>
+        <a href="#features" class="nav-link font-medium transition-colors duration-200 ease-in-out hover:text-blue-500 hover:underline underline-offset-4">Features</a>
+        <a href="#how" class="nav-link font-medium transition-colors duration-200 ease-in-out hover:text-blue-500 hover:underline underline-offset-4">How it Works</a>
+        <a href="#contact" class="nav-link font-medium transition-colors duration-200 ease-in-out hover:text-blue-500 hover:underline underline-offset-4">Contact Us</a>
+        <a href="/accounts/login/" class="ml-4 px-5 py-2 rounded-full bg-indigo-800 text-white font-semibold shadow transition-colors duration-200 ease-in-out hover:bg-indigo-900">Login / Signup</a>
+      </nav>
+      <div class="md:hidden">
+        <button class="p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-800" aria-label="Open menu">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-indigo-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
     </div>
-    <!-- Animated Background Particles -->
-    <div class="fixed inset-0 -z-10">
-      <div class="particle" style="width:120px;height:120px;left:10vw;top:20vh;background:#a21caf;animation-delay:0s;"></div>
-      <div class="particle" style="width:60px;height:60px;left:70vw;top:10vh;background:#06b6d4;animation-delay:2s;"></div>
-      <div class="particle" style="width:90px;height:90px;left:50vw;top:60vh;background:#f472b6;animation-delay:1s;"></div>
-      <div class="particle" style="width:140px;height:140px;left:80vw;top:80vh;background:#38bdf8;animation-delay:3s;"></div>
-      <div class="particle" style="width:50px;height:50px;left:30vw;top:80vh;background:#a5b4fc;animation-delay:4s;"></div>
     </div>
+  </header>
+
     <!-- Hero Section -->
-    <section class="flex flex-col md:flex-row items-center justify-between px-6 py-20 max-w-7xl mx-auto min-h-[80vh]">
-        <div class="md:w-1/2 mb-12 md:mb-0 animate-fadein-left">
-            <h1 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight tracking-tight drop-shadow-lg hero-gradient" style="font-family: 'Montserrat', sans-serif;">
-                Empower Your Academic Journey
+  <section class="w-full bg-gradient-to-br from-gray-50 to-blue-50 py-16 md:py-28" data-aos="fade-up">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between px-4 gap-10">
+      <div class="flex-1 flex flex-col items-center md:items-start text-center md:text-left gap-6">
+        <h1 class="text-4xl md:text-6xl font-extrabold text-indigo-800 leading-tight">
+          Manage Your Research Conferences with Ease
             </h1>
-            <p class="text-2xl text-gray-200 mb-10 font-medium" style="text-shadow:0 2px 16px #0006;">PaperSetu streamlines conference submissions, peer reviews, and collaboration for authors, reviewers, and chairs—all in one place.</p>
-            <div class="flex flex-wrap gap-6">
-            {% if user.is_authenticated %}
-                <a href="/home/" class="animated-btn px-10 py-4 font-bold text-lg shadow-xl focus:outline-none focus:ring-2 focus:ring-cyan-400 animate-fadein-up"><span>Go to Dashboard</span></a>
-                <a href="/conference/create/" class="animated-btn px-10 py-4 font-bold text-lg shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-400 animate-fadein-up" style="background:linear-gradient(90deg,#a21caf 0%,#06b6d4 100%);"><span>Create Conference</span></a>
-            {% else %}
-                <a href="/accounts/login/" class="animated-btn px-10 py-4 font-bold text-lg shadow-xl focus:outline-none focus:ring-2 focus:ring-cyan-400 animate-fadein-up"><span>Get Started</span></a>
-                <a href="/accounts/login/?next=/home/" class="animated-btn px-10 py-4 font-bold text-lg shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-400 animate-fadein-up" style="background:linear-gradient(90deg,#a21caf 0%,#06b6d4 100%);"><span>Create Conference</span></a>
-            {% endif %}
-            </div>
+        <p class="text-lg md:text-2xl text-gray-700 max-w-xl">
+          PaperSetu streamlines submissions, reviews, and collaboration for every conference role—all in one place.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 mt-2">
+          <a href="/accounts/login/"
+            class="primary-btn bg-white text-indigo-800 border-2 border-indigo-800 font-semibold rounded-full px-8 py-3 shadow-lg transition duration-300 ease-in-out transform hover:scale-110 hover:bg-indigo-800 hover:text-white hover:shadow-2xl hover:border-indigo-800 focus:outline-none focus:ring-4 focus:ring-indigo-300">
+            Get Started
+          </a>
+          <a href="#features"
+            class="secondary-btn bg-white text-indigo-800 border-2 border-indigo-800 font-semibold rounded-full px-8 py-3 shadow-lg transition duration-300 ease-in-out transform hover:scale-110 hover:bg-indigo-800 hover:text-white hover:shadow-2xl hover:border-indigo-800 focus:outline-none focus:ring-4 focus:ring-indigo-300">
+            Create Conference
+          </a>
         </div>
-        <div class="md:w-1/2 flex justify-center items-center relative animate-fadein-right">
-            <div class="glass p-4 rounded-3xl shadow-2xl hero-float neon">
-                <img src="https://images.pexels.com/photos/2305084/pexels-photo-2305084.jpeg" alt="Hero Visual" class="w-[420px] max-w-full rounded-2xl shadow-xl border-2 border-blue-400/30 hero-img-glow">
+      </div>
+      <div class="flex-1 flex justify-center items-center mt-10 md:mt-0">
+        <!-- Hero Image Slider Start -->
+        <div class="w-full max-w-md mx-auto rellax" data-rellax-speed="3" data-rellax-xs-speed="1" data-rellax-mobile-speed="1">
+          <div class="swiper hero-swiper rounded-2xl overflow-hidden shadow-xl border-2 border-blue-400/30">
+            <div class="swiper-wrapper">
+              <!-- Slide 1 -->
+              <div class="swiper-slide">
+                <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=500&q=80" alt="Conference Slide 1" class="w-full h-64 object-cover" />
+              </div>
+              <!-- Slide 2 -->
+              <div class="swiper-slide">
+                <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=500&q=80" alt="Conference Slide 2" class="w-full h-64 object-cover" />
+              </div>
+              <!-- Slide 3 -->
+              <div class="swiper-slide">
+                <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=500&q=80" alt="Conference Slide 3" class="w-full h-64 object-cover" />
+              </div>
             </div>
+            <!-- Pagination Dots -->
+            <div class="swiper-pagination mt-4"></div>
+          </div>
         </div>
+        <!-- Hero Image Slider End -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+    <section id="features" class="w-full bg-white/80 py-20 relative z-10">
+      <div class="max-w-6xl mx-auto px-4 rellax" data-rellax-speed="2" data-rellax-xs-speed="1" data-rellax-mobile-speed="1">
+        <h2 class="text-3xl md:text-4xl font-bold text-indigo-800 text-center mb-12">
+          Key Features
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <!-- Feature Cards (unchanged, glass effect added) -->
+          <div class="feature-card p-8 flex flex-col items-center text-center transition hover:scale-105 hover:shadow-2xl glass border border-blue-100 rounded-2xl shadow">
+            <svg class="mb-4 text-indigo-800" width="48" height="48" fill="none" viewBox="0 0 24 24">
+              <path d="M4 7v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 10h6M9 14h6M7 7V5a2 2 0 012-2h6a2 2 0 012 2v2" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3 class="text-xl font-semibold text-indigo-800 mb-2">Easy Paper Submission</h3>
+            <p class="text-gray-700">Submit your research papers in just a few clicks with our intuitive upload and form system.</p>
+          </div>
+          <div class="feature-card p-8 flex flex-col items-center text-center transition hover:scale-105 hover:shadow-2xl glass border border-blue-100 rounded-2xl shadow">
+            <svg class="mb-4 text-indigo-800" width="48" height="48" fill="none" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+              <path d="M8 12l2 2 4-4" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3 class="text-xl font-semibold text-indigo-800 mb-2">Smooth Reviewing Process</h3>
+            <p class="text-gray-700">Reviewers can easily access, annotate, and submit feedback for assigned papers.</p>
+          </div>
+          <div class="feature-card p-8 flex flex-col items-center text-center transition hover:scale-105 hover:shadow-2xl glass border border-blue-100 rounded-2xl shadow">
+            <svg class="mb-4 text-indigo-800" width="48" height="48" fill="none" viewBox="0 0 24 24">
+              <rect x="3" y="7" width="18" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+              <path d="M7 7V5a2 2 0 012-2h6a2 2 0 012 2v2" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M8 12h8" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <h3 class="text-xl font-semibold text-indigo-800 mb-2">Role-Based Dashboard</h3>
+            <p class="text-gray-700">Personalized dashboards for Chairs, Reviewers, and Authors to manage their tasks efficiently.</p>
+          </div>
+          <div class="feature-card p-8 flex flex-col items-center text-center transition hover:scale-105 hover:shadow-2xl glass border border-blue-100 rounded-2xl shadow">
+            <svg class="mb-4 text-indigo-800" width="48" height="48" fill="none" viewBox="0 0 24 24">
+              <path d="M12 20v-6M12 14l-3-3m3 3l3-3M4 4h16v2a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="12" r="10" stroke="#3b82f6" stroke-width="2"/>
+            </svg>
+            <h3 class="text-xl font-semibold text-indigo-800 mb-2">Automated Scoring System</h3>
+            <p class="text-gray-700">Scores and ranks papers automatically based on reviewer input and configurable criteria.</p>
+          </div>
+        </div>
+      </div>
     </section>
-    <!-- Features Section -->
-    <section class="glass max-w-6xl mx-auto my-16 py-14 px-8 shadow-2xl">
-        <h2 class="text-3xl md:text-4xl font-bold text-pink-300 mb-10 text-center tracking-wide">Why Choose PaperSetu?</h2>
-        <div class="grid md:grid-cols-3 gap-10">
-            <div class="bg-white/10 glass rounded-2xl p-8 shadow flex flex-col items-center border border-pink-400/10">
-                <img src="https://img.icons8.com/ios-filled/100/a21caf/conference-call.png" class="w-16 h-16 mb-4" alt="Easy Conference Management">
-                <h3 class="text-xl font-semibold text-pink-200 mb-2">Easy Conference Management</h3>
-                <p class="text-gray-200 text-center">Create, manage, and track conferences with intuitive tools for chairs and organizers.</p>
+
+    <!-- How it Works Section (unchanged, glass effect added) -->
+    <section id="how" class="w-full bg-gray-50/80 py-20 relative z-10">
+      <div class="max-w-5xl mx-auto px-4 rellax pt-0 pb-0" data-rellax-speed="2" data-rellax-xs-speed="1" data-rellax-mobile-speed="1">
+        <h2 class="text-3xl md:text-4xl font-bold text-indigo-800 text-center mb-12">
+          How It Works
+        </h2>
+        <div class="flex flex-col md:flex-row items-center justify-between gap-10">
+          <div class="flex-1 flex flex-col items-center text-center transition hover:scale-105 hover:shadow-xl glass bg-white rounded-2xl p-8 border border-blue-100 shadow">
+            <div class="flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
+              <span class="text-2xl font-bold text-indigo-800">1</span>
             </div>
-            <div class="bg-white/10 glass rounded-2xl p-8 shadow flex flex-col items-center border border-cyan-400/10">
-                <img src="https://img.icons8.com/ios-filled/100/06b6d4/checked--v1.png" class="w-16 h-16 mb-4" alt="Seamless Peer Review">
-                <h3 class="text-xl font-semibold text-cyan-200 mb-2">Seamless Peer Review</h3>
-                <p class="text-gray-200 text-center">Streamlined paper submission, reviewer assignment, and transparent review workflow.</p>
+            <svg class="mb-4 text-indigo-800" width="36" height="36" fill="none" viewBox="0 0 24 24">
+              <path d="M4 7v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 10h6M9 14h6M7 7V5a2 2 0 012-2h6a2 2 0 012 2v2" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3 class="text-lg font-semibold text-indigo-800 mb-2">Submit Your Paper</h3>
+            <p class="text-gray-700">Authors upload their research papers using our simple submission form.</p>
+          </div>
+          <div class="flex-1 flex flex-col items-center text-center transition hover:scale-105 hover:shadow-xl glass bg-white rounded-2xl p-8 border border-blue-100 shadow">
+            <div class="flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
+              <span class="text-2xl font-bold text-indigo-800">2</span>
             </div>
-            <div class="bg-white/10 glass rounded-2xl p-8 shadow flex flex-col items-center border border-blue-400/10">
-                <img src="https://img.icons8.com/ios-filled/100/38bdf8/collaboration.png" class="w-16 h-16 mb-4" alt="Collaboration & Notifications">
-                <h3 class="text-xl font-semibold text-blue-200 mb-2">Collaboration & Notifications</h3>
-                <p class="text-gray-200 text-center">Real-time notifications and dashboards for authors, reviewers, and chairs.</p>
+            <svg class="mb-4 text-indigo-800" width="36" height="36" fill="none" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+              <path d="M8 12l2 2 4-4" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3 class="text-lg font-semibold text-indigo-800 mb-2">Peer Review</h3>
+            <p class="text-gray-700">Reviewers are assigned and provide feedback and scores for each submission.</p>
+          </div>
+          <div class="flex-1 flex flex-col items-center text-center transition hover:scale-105 hover:shadow-xl glass bg-white rounded-2xl p-8 border border-blue-100 shadow">
+            <div class="flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
+              <span class="text-2xl font-bold text-indigo-800">3</span>
             </div>
+            <svg class="mb-4 text-indigo-800" width="36" height="36" fill="none" viewBox="0 0 24 24">
+              <rect x="3" y="7" width="18" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+              <path d="M8 12h8" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <h3 class="text-lg font-semibold text-indigo-800 mb-2">Decision & Dashboard</h3>
+            <p class="text-gray-700">Chairs make decisions and all users track progress in their personalized dashboard.</p>
+          </div>
         </div>
+      </div>
     </section>
-    <!-- Gallery/Showcase Section -->
-    <section class="max-w-6xl mx-auto py-16 px-8">
-        <h2 class="text-2xl md:text-3xl font-bold text-pink-200 mb-8 text-center">Showcase</h2>
-        <div class="grid md:grid-cols-3 gap-8">
-            <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80" class="rounded-2xl shadow-xl w-full h-48 object-cover glass" alt="Showcase 1">
-            <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80" class="rounded-2xl shadow-xl w-full h-48 object-cover glass" alt="Showcase 2">
-            <img src="https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=400&q=80" class="rounded-2xl shadow-xl w-full h-48 object-cover glass" alt="Showcase 3">
+
+    <!-- Testimonials Section (unchanged, glass effect added) -->
+    <section id="testimonials" class="w-full bg-white/80 py-20 relative z-10">
+      <div class="max-w-5xl mx-auto px-4 mt-0 mb-0 pt-0">
+        <h2 class="text-3xl md:text-4xl font-bold text-indigo-800 text-center mb-12">
+          What Our Users Say
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="bg-gray-50 glass border border-blue-100 rounded-2xl p-8 shadow transition hover:scale-105 hover:shadow-xl flex flex-col items-center text-center">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User 1" class="w-16 h-16 rounded-full mb-4 shadow">
+            <div class="text-lg text-gray-900 font-semibold mb-1">Dr. Arjun Mehta</div>
+            <div class="text-blue-500 text-sm mb-2">Conference Chair</div>
+            <p class="text-gray-700 italic">“PaperSetu made managing our conference submissions and reviews effortless. The dashboard is a game changer!”</p>
+          </div>
+          <div class="bg-gray-50 glass border border-blue-100 rounded-2xl p-8 shadow transition hover:scale-105 hover:shadow-xl flex flex-col items-center text-center">
+            <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="User 2" class="w-16 h-16 rounded-full mb-4 shadow">
+            <div class="text-lg text-gray-900 font-semibold mb-1">Prof. Sara Lee</div>
+            <div class="text-blue-500 text-sm mb-2">Reviewer</div>
+            <p class="text-gray-700 italic">“The reviewing process is so smooth and intuitive. I love the role-based dashboard and notifications.”</p>
+          </div>
+          <div class="bg-gray-50 glass border border-blue-100 rounded-2xl p-8 shadow transition hover:scale-105 hover:shadow-xl flex flex-col items-center text-center md:col-span-2">
+            <img src="https://randomuser.me/api/portraits/men/65.jpg" alt="User 3" class="w-16 h-16 rounded-full mb-4 shadow">
+            <div class="text-lg text-gray-900 font-semibold mb-1">Ravi Kumar</div>
+            <div class="text-blue-500 text-sm mb-2">Author</div>
+            <p class="text-gray-700 italic">“Submitting my paper was quick and easy. The automated scoring system gave me instant feedback!”</p>
+          </div>
         </div>
+      </div>
     </section>
-    <!-- Footer -->
-    <footer class="bg-gradient-to-r from-purple-900 to-blue-900 text-white py-8 mt-8 glass border-t border-pink-400/20">
-        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center px-4">
-            <div class="mb-4 md:mb-0 flex items-center gap-4">
-                <img src="https://sdmntpreastus.oaiusercontent.com/files/00000000-34dc-61f9-8e3a-40507fb3e4a8/raw?se=2025-06-26T20%3A40%3A27Z&sp=r&sv=2024-08-04&sr=b&scid=f51c0b24-2622-5c35-973f-203d713665bf&skoid=02b7f7b5-29f8-416a-aeb6-99464748559d&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-26T07%3A48%3A21Z&ske=2025-06-27T07%3A48%3A21Z&sks=b&skv=2024-08-04&sig=BSYIOXuJ%2BGMHIbSfj9QD5fU7re%2BO1GLG0Gq54sbwm%2Bk%3D" alt="PaperSetu Logo" class="w-24 h-auto mb-4">
-                <span class="font-bold text-lg">PaperSetu</span> &copy; {% now "Y" %}
-            </div>
-            <div class="flex space-x-6">
-                <a href="#features" class="hover:underline">Features</a>
-                <a href="#" class="hover:underline">Contact</a>
-                <a href="mailto:support@papersetu.com" class="hover:underline">Support</a>
-            </div>
+
+    <!-- Call to Action (CTA) Section (bolder, glass effect) -->
+    <section class="w-full bg-gradient-to-r from-indigo-800 to-blue-500 py-16 relative z-10">
+      <div class="max-w-3xl mx-auto px-4 flex flex-col items-center text-center">
+        <h2 class="text-3xl md:text-4xl font-bold text-white mb-4 drop-shadow-lg">
+          Join PaperSetu Today
+        </h2>
+        <p class="text-lg md:text-xl text-blue-100 mb-8">
+          Experience seamless conference management, from submission to review and beyond.
+        </p>
+        <a href="/accounts/login/"
+          class="inline-block px-10 py-4 rounded-full bg-yellow-400 text-indigo-800 font-bold text-lg shadow-xl transition hover:bg-yellow-300 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+          Get Started
+        </a>
+      </div>
+    </section>
+  </main>
+  <!-- Footer (unchanged) -->
+  <footer class="w-full bg-gray-900 text-gray-200 py-10 relative z-10">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-8">
+      <div class="flex items-center gap-3 mb-6 md:mb-0">
+        <img src="{% static 'images/LOGO BG.png' %}" alt="PaperSetu Logo" class="w-10 h-10 rounded-full bg-white shadow">
+        <span class="text-xl font-bold text-white">PaperSetu</span>
+      </div>
+      <div class="flex flex-col md:flex-row gap-4 md:gap-8 items-center">
+        <a href="#about" class="hover:text-yellow-400 transition">About</a>
+        <a href="#privacy" class="hover:text-yellow-400 transition">Privacy</a>
+        <a href="#terms" class="hover:text-yellow-400 transition">Terms</a>
+        <div class="flex gap-3 mt-2 md:mt-0">
+          <a href="#" aria-label="Twitter" class="hover:text-blue-400 transition">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.59-2.47.7a4.3 4.3 0 0 0 1.88-2.37 8.59 8.59 0 0 1-2.72 1.04A4.28 4.28 0 0 0 16.11 4c-2.37 0-4.29 1.92-4.29 4.29 0 .34.04.67.11.99C7.69 9.13 4.07 7.38 1.64 4.7c-.37.64-.58 1.39-.58 2.19 0 1.51.77 2.84 1.95 3.62-.72-.02-1.39-.22-1.98-.55v.06c0 2.11 1.5 3.87 3.5 4.27-.36.1-.74.16-1.13.16-.28 0-.54-.03-.8-.08.54 1.7 2.12 2.94 3.99 2.97A8.6 8.6 0 0 1 2 19.54a12.13 12.13 0 0 0 6.56 1.92c7.88 0 12.2-6.53 12.2-12.2 0-.19 0-.37-.01-.56A8.7 8.7 0 0 0 24 4.59a8.48 8.48 0 0 1-2.54.7z"/></svg>
+          </a>
+          <a href="#" aria-label="LinkedIn" class="hover:text-blue-400 transition">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.76 0-5 2.24-5 5v14c0 2.76 2.24 5 5 5h14c2.76 0 5-2.24 5-5v-14c0-2.76-2.24-5-5-5zm-11 19h-3v-9h3v9zm-1.5-10.29c-.97 0-1.75-.79-1.75-1.75s.78-1.75 1.75-1.75 1.75.79 1.75 1.75-.78 1.75-1.75 1.75zm13.5 10.29h-3v-4.5c0-1.08-.02-2.47-1.5-2.47-1.5 0-1.73 1.17-1.73 2.39v4.58h-3v-9h2.89v1.23h.04c.4-.75 1.38-1.54 2.84-1.54 3.04 0 3.6 2 3.6 4.59v4.72z"/></svg>
+          </a>
         </div>
-    </footer>
-    <script>
-      // Animate fade in
-      document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.animate-fadein-left').forEach(el => {
-          el.style.opacity = 0;
-          el.style.transform = 'translateX(-40px)';
-          setTimeout(() => {
-            el.style.transition = 'all 1s cubic-bezier(.4,2,.3,1)';
-            el.style.opacity = 1;
-            el.style.transform = 'translateX(0)';
-          }, 200);
-        });
-        document.querySelectorAll('.animate-fadein-right').forEach(el => {
-          el.style.opacity = 0;
-          el.style.transform = 'translateX(40px)';
-          setTimeout(() => {
-            el.style.transition = 'all 1s cubic-bezier(.4,2,.3,1)';
-            el.style.opacity = 1;
-            el.style.transform = 'translateX(0)';
-          }, 400);
-        });
-        document.querySelectorAll('.animate-fadein-up').forEach((el, i) => {
-          el.style.opacity = 0;
-          el.style.transform = 'translateY(40px)';
-          setTimeout(() => {
-            el.style.transition = 'all 1s cubic-bezier(.4,2,.3,1)';
-            el.style.opacity = 1;
-            el.style.transform = 'translateY(0)';
-          }, 600 + i*100);
-        });
-        // Parallax effect for particles
-        document.addEventListener('mousemove', function(e) {
-          const x = e.clientX / window.innerWidth - 0.5;
-          const y = e.clientY / window.innerHeight - 0.5;
-          document.querySelectorAll('.particle').forEach((el, i) => {
-            el.style.transform += ` translate(${x*30*(i+1)}px,${y*30*(i+1)}px)`;
-          });
-        });
-      });
-    </script>
+      </div>
+    </div>
+    <div class="mt-8 text-center text-gray-400 text-sm">
+      &copy; 2024 PaperSetu. All rights reserved.
+    </div>
+  </footer>
+
+  <!-- Swiper JS -->
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+  <script>
+    const heroSwiper = new Swiper('.hero-swiper', {
+      loop: true,
+      autoplay: {
+        delay: 3500,
+        disableOnInteraction: false,
+      },
+      speed: 700,
+      pagination: {
+        el: '.swiper-pagination',
+        clickable: true,
+      },
+      grabCursor: true,
+      slidesPerView: 1,
+      spaceBetween: 0,
+    });
+    AOS.init({
+      duration: 900,
+      once: true,
+      offset: 60,
+      easing: 'ease-in-out',
+    });
+    new Rellax('.rellax', {
+      center: false,
+      wrapper: null,
+      round: true,
+      vertical: true,
+      horizontal: false
+    });
+    // Mobile menu toggle
+    document.querySelector('.md\\:hidden button').onclick = function() {
+      const menu = document.querySelector('.md\\:hidden #mobile-menu');
+      menu.classList.toggle('hidden');
+    };
+  </script>
+  <style>
+    @keyframes bgZoom {
+      0% { transform: scale(1);}
+      100% { transform: scale(1.05);}
+    }
+    .bg-animate {
+      animation: bgZoom 20s ease-in-out infinite alternate;
+    }
+  </style>
 </body>
 </html> 

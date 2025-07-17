@@ -10,34 +10,53 @@ from django.contrib.auth.views import LoginView, PasswordResetView, PasswordRese
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.hashers import make_password
 import string
+from django.views import View
 
-def register(request):
-    if request.method == 'POST':
-        form = UserRegistrationForm(request.POST)
-        if form.is_valid():
-            user = form.save(commit=False)
-            user.is_active = False
-            otp = str(random.randint(100000, 999999))
-            user.otp = otp
-            user.otp_created_at = timezone.now()
-            user.save()
-            send_mail(
-                'Your OTP for Conference Management Registration',
-                f'Your OTP is: {otp}',
-                'noreply@conference.com',
-                [user.email],
-                fail_silently=False,
-            )
-            request.session['pending_user_id'] = user.id
-            return redirect('accounts:verify_otp')
-    else:
-        form = UserRegistrationForm()
-    return render(request, 'accounts/register.html', {'form': form})
+class CombinedAuthView(LoginView):
+    template_name = 'accounts/login.html'
+
+    def post(self, request, *args, **kwargs):
+        if 'signup' in request.POST:
+            # Handle sign up
+            form = UserRegistrationForm(request.POST)
+            if form.is_valid():
+                user = form.save(commit=False)
+                user.is_active = False
+                otp = str(random.randint(100000, 999999))
+                user.otp = otp
+                user.otp_created_at = timezone.now()
+                user.save()
+                send_mail(
+                    'Your OTP for PaperSetu Registration',
+                    f'Your OTP is: {otp}',
+                    'noreply@papersetu.com',
+                    [user.email],
+                    fail_silently=False,
+                )
+                request.session['pending_user_id'] = user.id
+                return redirect('accounts:verify_otp')
+            else:
+                # Render the page with registration errors
+                return render(request, self.template_name, {
+                    'form': self.get_form(self.get_form_class()),
+                    'signup_form': form,
+                    'show_signup': True
+                })
+        else:
+            # Handle login (default LoginView behavior)
+            return super().post(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {
+            'form': self.get_form(self.get_form_class()),
+            'signup_form': UserRegistrationForm(),
+            'show_signup': False
+        })
 
 def verify_otp(request):
     user_id = request.session.get('pending_user_id')
     if not user_id:
-        return redirect('accounts:register')
+        return redirect('accounts:login')
     user = User.objects.get(id=user_id)
     if request.method == 'POST':
         otp_input = request.POST.get('otp')
@@ -51,30 +70,6 @@ def verify_otp(request):
         else:
             messages.error(request, 'Invalid OTP. Please try again.')
     return render(request, 'accounts/verify_otp.html')
-
-class CustomLoginView(LoginView):
-    template_name = 'accounts/login.html'
-    def get_success_url(self):
-        return '/home/'
-
-    def form_valid(self, form):
-        username_or_email = self.request.POST.get('username')
-        password = self.request.POST.get('password')
-        user = authenticate(self.request, username=username_or_email, password=password)
-        if user is None:
-            # Try email
-            try:
-                user_obj = User.objects.get(email=username_or_email)
-                user = authenticate(self.request, username=user_obj.username, password=password)
-            except ObjectDoesNotExist:
-                pass
-        if user is not None:
-            auth_login(self.request, user)
-            return redirect(self.get_success_url())
-        else:
-            from django.contrib import messages
-            messages.error(self.request, 'Invalid credentials. Please try again.')
-            return self.form_invalid(form)
 
 def custom_logout(request):
     logout(request)
