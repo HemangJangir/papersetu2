@@ -1,37 +1,189 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <title>Login | PaperSetu</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - PaperSetu</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        body {
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Background Image with Blur */
+        .login-bg::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: url("{% static 'images/BACKGROUND.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+            filter: blur(8px); /* Adjust blur strength as needed */
+            z-index: -1;
+        }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen flex items-center justify-center">
-    <div class="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md border border-blue-100">
-        <div class="flex flex-col items-center mb-8">
-            <img src="https://sdmntpreastus.oaiusercontent.com/files/00000000-34dc-61f9-8e3a-40507fb3e4a8/raw?se=2025-06-26T21%3A02%3A04Z&sp=r&sv=2024-08-04&sr=b&scid=4dc74189-d597-568b-aa0a-f2524c418cb9&skoid=02b7f7b5-29f8-416a-aeb6-99464748559d&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-26T19%3A49%3A02Z&ske=2025-06-27T19%3A49%3A02Z&sks=b&skv=2024-08-04&sig=JPOGPXSfYiORJ1ACMioCFk2iFk7Ee5QJzMSv8TEfVvA%3D" alt="PaperSetu Logo" class="w-24 h-auto rounded-full mb-2 shadow">
-            <h2 class="text-3xl font-extrabold text-blue-700 mb-2">Welcome Back</h2>
-            <p class="text-gray-500">Login to your PaperSetu account</p>
+
+<body class="login-bg min-h-screen flex items-center justify-center bg-gray-200">
+
+  <div id="auth-container"
+     class="w-full max-w-5xl mx-auto flex flex-col md:flex-row rounded-3xl border border-gray-200 hover:border-blue-500 transition-all duration-300 overflow-hidden bg-white/50 relative min-h-[750px] backdrop-blur-sm">
+
+    <!-- Login Form Section -->
+    <div id="login-section" class="w-full md:w-1/2 flex flex-col justify-center items-center p-20 bg-white min-h-[750px] transition-all duration-500">
+      <h2 class="text-4xl font-bold text-gray-900 mb-4">Sign In</h2>
+      <div class="text-gray-400 text-lg mb-6">or use your email password</div>
+      <form method="post" action="" class="w-full max-w-md space-y-6">
+        {% csrf_token %}
+        <div class="flex flex-col items-center mb-10">
+          <img src="{% static 'images/LOGO BG.png' %}" alt="PaperSetu Logo" class="w-20 h-20 rounded-full mb-4 shadow">
         </div>
-        <form method="post" class="space-y-5">
-            {% csrf_token %}
-            {% if form.errors %}
-                <div class="mb-4 text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">Invalid credentials. Please try again.</div>
-            {% endif %}
-            <div>
-                <label class="block mb-1 font-semibold text-gray-700">Username or Email</label>
-                <input type="text" name="username" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" required placeholder="Enter your username or email">
-            </div>
-            <div>
-                <label class="block mb-1 font-semibold text-gray-700">Password</label>
-                <input type="password" name="password" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" required placeholder="Enter your password">
-            </div>
-            <div class="flex justify-between items-center">
-                <a href="{% url 'accounts:password_reset_request' %}" class="text-blue-600 hover:underline text-sm">Forgot Password?</a>
-            </div>
-            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold text-lg shadow hover:bg-blue-700 transition">Login</button>
-        </form>
-        <p class="mt-6 text-center text-gray-600">Don't have an account? <a href="/accounts/register/" class="text-blue-600 hover:underline font-semibold">Sign Up</a></p>
+        <div>
+          <input type="text" name="username" id="id_username" required
+            class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
+            placeholder="Username" value="{{ form.username.value|default_if_none:'' }}">
+          {% if form.username.errors %}
+            <p class="text-red-500 text-sm mt-1">{{ form.username.errors.0 }}</p>
+          {% endif %}
+        </div>
+        <div>
+          <input type="password" name="password" id="id_password" required
+            class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
+            placeholder="Password">
+          {% if form.password.errors %}
+            <p class="text-red-500 text-sm mt-1">{{ form.password.errors.0 }}</p>
+          {% endif %}
+        </div>
+        {% if form.non_field_errors %}
+          <div class="text-red-500 text-sm mb-2">
+            {{ form.non_field_errors.0 }}
+          </div>
+        {% endif %}
+        <div class="flex justify-between items-center mb-4">
+          <a href="/accounts/password_reset/" class="text-sm text-indigo-700 hover:underline">Forgot Your Password?</a>
+        </div>
+        <button type="submit"
+          class="w-full bg-indigo-800 text-white font-semibold py-3 rounded-lg shadow hover:bg-indigo-900 text-lg transition focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2">
+          Sign In
+        </button>
+      </form>
     </div>
+
+    <!-- Right Section -->
+    <div id="hello-section" class="w-full md:w-1/2 flex flex-col justify-center items-center bg-white p-20 relative min-h-[750px] transition-all duration-500 overflow-hidden">
+      <div class="absolute left-0 top-0 w-[120%] h-full bg-gradient-to-br from-indigo-900 to-indigo-700 rounded-tl-[200px] rounded-bl-[200px] z-0"></div>
+      <div class="relative z-10 flex flex-col items-center text-center">
+        <h2 class="text-4xl font-bold mb-4 text-white">Hello, Friend!</h2>
+        <p class="mb-8 text-xl text-white">Register with your personal details to use all of site features</p>
+        <button id="show-register"
+          class="px-10 py-3 rounded-full border-2 border-white text-white font-semibold text-lg hover:bg-white hover:text-indigo-800 transition">
+          Sign Up
+        </button>
+      </div>
+    </div>
+
+    <!-- Register Form Overlay -->
+    <div id="register-overlay"
+      class="absolute inset-0 w-full h-full flex flex-col md:flex-row bg-white/95 rounded-3xl shadow-2xl overflow-hidden z-20 opacity-0 pointer-events-none transition-all duration-500">
+      <!-- Left Section -->
+      <div class="w-full md:w-1/2 flex flex-col justify-center items-center bg-white p-20 relative min-h-[750px] overflow-hidden">
+        <div class="absolute right-0 top-0 w-[120%] h-full bg-gradient-to-br from-indigo-900 to-indigo-700 rounded-tr-[200px] rounded-br-[200px] z-0"></div>
+        <div class="relative z-10 flex flex-col items-center text-center">
+          <h2 class="text-4xl font-bold mb-4 text-white">Welcome Back!</h2>
+          <p class="mb-8 text-xl text-white">Enter your personal details to use all of site features</p>
+          <button id="show-login"
+            class="px-10 py-3 rounded-full border-2 border-white text-white font-semibold text-lg hover:bg-white hover:text-indigo-800 transition">
+            Sign In
+          </button>
+        </div>
+      </div>
+
+      <!-- Registration Form Section -->
+      <div class="w-full md:w-1/2 flex flex-col justify-center items-center p-20 bg-white min-h-[750px]">
+        <h2 class="text-4xl font-bold text-gray-900 mb-4">Create Account</h2>
+        <div class="text-gray-400 text-lg mb-6">or use your email for registration</div>
+        <form method="post" action="/accounts/login/" class="w-full max-w-md space-y-6">
+          {% csrf_token %}
+          <input type="hidden" name="signup" value="1">
+          {% if signup_form.non_field_errors %}
+            <div class="text-red-600 text-md mb-2">{{ signup_form.non_field_errors }}</div>
+          {% endif %}
+          <div>
+            <input type="text" name="first_name" id="id_first_name" required
+              class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
+              placeholder="First Name" value="{{ signup_form.first_name.value|default_if_none:'' }}">
+            {% if signup_form.first_name.errors %}
+              <p class="text-red-500 text-sm mt-1">{{ signup_form.first_name.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <input type="text" name="last_name" id="id_last_name" required
+              class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
+              placeholder="Last Name" value="{{ signup_form.last_name.value|default_if_none:'' }}">
+            {% if signup_form.last_name.errors %}
+              <p class="text-red-500 text-sm mt-1">{{ signup_form.last_name.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <input type="text" name="username" id="id_username_reg" required
+              class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
+              placeholder="Username" value="{{ signup_form.username.value|default_if_none:'' }}">
+            {% if signup_form.username.errors %}
+              <p class="text-red-500 text-sm mt-1">{{ signup_form.username.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <input type="email" name="email" id="id_email" required
+              class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
+              placeholder="Email" value="{{ signup_form.email.value|default_if_none:'' }}">
+            {% if signup_form.email.errors %}
+              <p class="text-red-500 text-sm mt-1">{{ signup_form.email.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <input type="password" name="password1" id="id_password1" required
+              class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
+              placeholder="Password">
+            {% if signup_form.password1.errors %}
+              <p class="text-red-500 text-sm mt-1">{{ signup_form.password1.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <input type="password" name="password2" id="id_password2" required
+              class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
+              placeholder="Confirm Password">
+            {% if signup_form.password2.errors %}
+              <p class="text-red-500 text-sm mt-1">{{ signup_form.password2.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <button type="submit"
+            class="w-full bg-indigo-800 text-white font-semibold py-3 rounded-lg shadow hover:bg-indigo-900 text-lg transition focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2">
+            Sign Up
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const showRegisterBtn = document.getElementById('show-register');
+    const showLoginBtn = document.getElementById('show-login');
+    const registerOverlay = document.getElementById('register-overlay');
+    showRegisterBtn.addEventListener('click', () => {
+      registerOverlay.classList.remove('opacity-0', 'pointer-events-none');
+      registerOverlay.classList.add('opacity-100');
+    });
+    showLoginBtn.addEventListener('click', () => {
+      registerOverlay.classList.add('opacity-0', 'pointer-events-none');
+      registerOverlay.classList.remove('opacity-100');
+    });
+  </script>
+
 </body>
-</html> 
+</html>
