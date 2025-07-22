@@ -123,7 +123,19 @@ class Paper(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='papers')
     conference = models.ForeignKey(Conference, on_delete=models.CASCADE, related_name='papers')
     submitted_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=[('submitted', 'Submitted'), ('accepted', 'Accepted'), ('rejected', 'Rejected')], default='submitted')
+    paper_id = models.CharField(max_length=20, unique=True, blank=True, null=True, help_text="Unique Paper ID for search/reference")
+    
+    STATUS_CHOICES = [
+        ('submitted', 'Submitted'),
+        ('under_review', 'Under Review'),
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    is_paid = models.BooleanField(default=False)
+    stripe_session_id = models.CharField(max_length=255, blank=True, null=True)
+    payment_amount = models.PositiveIntegerField(default=500)  # in INR
     is_final_list = models.BooleanField(default=False, help_text="Mark if this paper is included in the final endorsed list")
     keywords = models.CharField(max_length=255, blank=True, help_text="Comma-separated keywords")
 
@@ -132,75 +144,27 @@ class Paper(models.Model):
     
     def update_status_based_on_reviews(self):
         """Update paper status based on review decisions"""
-        reviews = self.reviews.filter(decision__in=['accept', 'reject'])
-        
-        if not reviews.exists():
-            return  # No reviews yet
-        
-        accept_count = reviews.filter(decision='accept').count()
-        reject_count = reviews.filter(decision='reject').count()
-        total_reviews = reviews.count()
-        
-        # If at least 2 reviewers have accepted, accept the paper
-        if accept_count >= 2:
-            if self.status != 'accepted':
-                self.status = 'accepted'
-                self.save()
-                
-                # Create notification for author
-                Notification.objects.create(
-                    recipient=self.author,
-                    notification_type='paper_decision',
-                    title=f'Paper Accepted!',
-                    message=f'Congratulations! Your paper "{self.title}" has been accepted for {self.conference.name} based on {accept_count} positive reviews.',
-                    related_paper=self,
-                    related_conference=self.conference
-                )
-                
-                # Create notification for chair
-                Notification.objects.create(
-                    recipient=self.conference.chair,
-                    notification_type='paper_decision',
-                    title=f'Paper Auto-Accepted',
-                    message=f'Paper "{self.title}" has been automatically accepted with {accept_count} positive reviews.',
-                    related_paper=self,
-                    related_conference=self.conference
-                )
-        # If majority of reviewers have rejected, reject the paper
-        elif reject_count > accept_count and total_reviews >= 2:
-            if self.status != 'rejected':
-                self.status = 'rejected'
-                self.save()
-                
-                # Create notification for author
-                Notification.objects.create(
-                    recipient=self.author,
-                    notification_type='paper_decision',
-                    title=f'Paper Decision',
-                    message=f'Your paper "{self.title}" has been reviewed for {self.conference.name}. Status: Rejected (majority decision).',
-                    related_paper=self,
-                    related_conference=self.conference
-                )
-                
-                # Create notification for chair
-                Notification.objects.create(
-                    recipient=self.conference.chair,
-                    notification_type='paper_decision',
-                    title=f'Paper Auto-Rejected',
-                    message=f'Paper "{self.title}" has been automatically rejected with {reject_count} negative reviews.',
-                    related_paper=self,
-                    related_conference=self.conference
-                )
-        # If only 1 reviewer has reviewed and rejected, keep as submitted
-        elif total_reviews == 1 and reject_count == 1:
-            if self.status != 'submitted':
-                self.status = 'submitted'
-                self.save()
+        # Only update internal review state, do not set status to accepted/rejected automatically
+        # Status remains 'pending' until chair acts
+        pass
+
+    def save(self, *args, **kwargs):
+        if not self.paper_id:
+            last_id = Paper.objects.all().order_by('-id').first()
+            next_num = 1
+            if last_id and last_id.paper_id and last_id.paper_id.startswith('PAPER'):
+                try:
+                    next_num = int(last_id.paper_id.replace('PAPER', '')) + 1
+                except Exception:
+                    pass
+            self.paper_id = f'PAPER{next_num:04d}'
+        super().save(*args, **kwargs)
 
 class Review(models.Model):
     paper = models.ForeignKey(Paper, on_delete=models.CASCADE, related_name='reviews')
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
     decision = models.CharField(max_length=10, choices=[('accept', 'Accept'), ('reject', 'Reject')], blank=True, null=True)
+    recommendation = models.CharField(max_length=10, choices=[('accept', 'Accept'), ('reject', 'Reject')], blank=True, null=True, help_text="Subreviewer recommendation (not final decision)")
     submitted_at = models.DateTimeField(auto_now_add=True)
     comments = models.TextField(blank=True)
     rating = models.IntegerField(null=True, blank=True)
@@ -211,7 +175,12 @@ class Review(models.Model):
         unique_together = ('paper', 'reviewer')
 
     def __str__(self):
-        return f"{self.reviewer} review for {self.paper}: {self.decision}"
+        if self.decision:
+            return f"{self.reviewer} review for {self.paper}: {self.decision}"
+        elif self.recommendation:
+            return f"{self.reviewer} review for {self.paper}: {self.recommendation} (recommendation)"
+        else:
+            return f"{self.reviewer} review for {self.paper}: pending"
 
 class Notification(models.Model):
     NOTIFICATION_TYPES = [

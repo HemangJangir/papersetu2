@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -181,7 +182,7 @@
                            name="search" 
                            id="search"
                            value="{{ search_query }}" 
-                           placeholder="Search by title, author, or abstract..." 
+                           placeholder="Search by author name, paper title, or paper ID..." 
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 
@@ -227,6 +228,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reviews</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subreviewer Recommendation</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -277,6 +279,30 @@
                                     <div class="font-medium">{{ paper.submitted_at|date:"M d, Y" }}</div>
                                     <div class="text-xs text-gray-400">{{ paper.submitted_at|date:"H:i" }}</div>
                                 </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {# Show latest subreviewer recommendation if any and not yet decided #}
+                                {% with rec=paper.latest_subreviewer_recommendation %}
+                                    {% if rec %}
+                                        <span class="font-semibold">{{ rec.recommendation|title }}</span>
+                                        <div class="text-xs text-gray-400 mt-1">By: {{ rec.reviewer.get_full_name|default:rec.reviewer.username }}</div>
+                                        <div class="text-xs text-gray-400">Marks: {{ rec.rating }}, Comments: {{ rec.comments|truncatewords:10 }}</div>
+                                        {% if is_chair %}
+                                            <form method="post" action="{% url 'dashboard:approve_recommendation' rec.id %}" class="mt-2 flex gap-2 approve-recommendation-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="decision" value="accept">
+                                                <button type="submit" class="px-2 py-1 bg-green-600 text-white rounded text-xs">Accept</button>
+                                            </form>
+                                            <form method="post" action="{% url 'dashboard:approve_recommendation' rec.id %}" class="mt-2 flex gap-2 approve-recommendation-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="decision" value="reject">
+                                                <button type="submit" class="px-2 py-1 bg-red-600 text-white rounded text-xs">Reject</button>
+                                            </form>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-gray-400">-</span>
+                                    {% endif %}
+                                {% endwith %}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <a href="{% url 'dashboard:manage_submission' conference.id paper.id %}" 

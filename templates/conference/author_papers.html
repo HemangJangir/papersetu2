@@ -1,0 +1,85 @@
+{% extends 'dashboard/dashboard.html' %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-blue-700 flex items-center gap-2">
+            <i class="fas fa-file-alt"></i> My Papers
+        </h1>
+        <a href="{% url 'conference:author_dashboard' conference.id %}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow font-semibold transition flex items-center gap-2">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+    <div class="bg-white rounded-2xl shadow-xl p-8">
+        {% if papers %}
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead>
+                <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted At</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for paper in papers %}
+                <tr>
+                    <td class="px-4 py-2 whitespace-nowrap">{{ paper.title }}</td>
+                    <td class="px-4 py-2 whitespace-nowrap">
+                        {% if paper.status == 'pending' %}
+                            <span class="text-yellow-700 font-semibold">Pending Decision</span>
+                        {% elif paper.status == 'accepted' %}
+                            <span class="text-green-700 font-semibold">Accepted</span>
+                        {% elif paper.status == 'rejected' %}
+                            <span class="text-red-700 font-semibold">Rejected</span>
+                        {% elif paper.status == 'under_review' %}
+                            <span class="text-blue-700 font-semibold">Under Review</span>
+                        {% elif paper.status == 'submitted' %}
+                            <span class="text-gray-700 font-semibold">Submitted</span>
+                        {% else %}
+                            <span class="text-gray-700 font-semibold">{{ paper.status|title }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap">{{ paper.submitted_at|date:"M d, Y H:i" }}</td>
+                    <td class="px-4 py-2 whitespace-nowrap">
+                        {% if paper.status == 'accepted' and not paper.is_paid %}
+                            <button id="pay-btn-{{ paper.id }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded">Pay Now</button>
+                            <script src="https://js.stripe.com/v3/"></script>
+                            <script>
+                            document.getElementById('pay-btn-{{ paper.id }}').onclick = function() {
+                                fetch("{% url 'conference:create_checkout_session' paper.id %}", {
+                                    method: "POST",
+                                    headers: {
+                                        "X-CSRFToken": "{{ csrf_token }}",
+                                        "Content-Type": "application/json"
+                                    }
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.id) {
+                                        var stripe = Stripe(data.stripe_public_key);
+                                        stripe.redirectToCheckout({ sessionId: data.id });
+                                    } else {
+                                        alert(data.error || "Error creating payment session.");
+                                    }
+                                });
+                            }
+                            </script>
+                        {% elif paper.status == 'accepted' and paper.is_paid %}
+                            <span class="ml-2 text-green-700 font-semibold">Paid</span>
+                        {% else %}
+                            <span class="text-gray-400">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-gray-600 text-center py-12">
+            <i class="fas fa-folder-open text-4xl mb-4"></i>
+            <div class="text-lg font-medium">No papers submitted yet.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

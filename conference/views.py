@@ -18,6 +18,51 @@ from django.core.mail import EmailMessage
 from django.conf import settings
 from .models import Author
 
+import stripe
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import get_object_or_404, render
+from django.http import JsonResponse
+from .models import Paper
+from django.db import models
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+@csrf_exempt
+def create_checkout_session(request, paper_id):
+    paper = get_object_or_404(Paper, id=paper_id)
+    if paper.is_paid or paper.status != 'accepted':
+        return JsonResponse({'error': 'Payment not allowed.'}, status=400)
+    session = stripe.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[{
+            'price_data': {
+                'currency': settings.STRIPE_CURRENCY,
+                'product_data': {
+                    'name': f'Conference Paper Fee (Paper #{paper.id})',
+                },
+                'unit_amount': settings.STRIPE_PAYMENT_AMOUNT,
+            },
+            'quantity': 1,
+        }],
+        mode='payment',
+        success_url=request.build_absolute_uri(f'/payment/success/{paper.id}/'),
+        cancel_url=request.build_absolute_uri(f'/payment/cancel/{paper.id}/'),
+        metadata={'paper_id': paper.id}
+    )
+    paper.stripe_session_id = session.id
+    paper.save()
+    return JsonResponse({'id': session.id, 'stripe_public_key': settings.STRIPE_PUBLISHABLE_KEY})
+
+def payment_success(request, paper_id):
+    paper = get_object_or_404(Paper, id=paper_id)
+    paper.is_paid = True
+    paper.save()
+    return render(request, 'conference/payment_success.html', {'paper': paper})
+
+def payment_cancel(request, paper_id):
+    return render(request, 'conference/payment_cancel.html', {'paper_id': paper_id})
+
 def send_paper_submission_emails(paper, conference, corresponding_author):
     """
     Send notification emails to chair and corresponding author when a paper is submitted.
@@ -80,6 +125,22 @@ Best regards,
     except Exception as e:
         # Log the error but don't break the submission process
         print(f"Error sending paper submission emails: {e}")
+
+def send_payment_request_email(author_email, paper):
+    subject = "Your paper has been accepted! Please pay the conference fee"
+    message = (
+        f"Congratulations! Your paper '{paper.title}' has been accepted.\n\n"
+        f"To proceed, please pay the conference fee of ₹{paper.payment_amount}.\n"
+        f"Login to your dashboard and click the 'Pay Now' button.\n\n"
+        f"Thank you!"
+    )
+    send_mail(
+        subject,
+        message,
+        settings.DEFAULT_FROM_EMAIL,
+        [author_email],
+        fail_silently=False,
+    )
 
 class SubreviewerReviewForm(forms.Form):
     RATING_CHOICES = [
@@ -344,7 +405,15 @@ def author_dashboard(request, conference_id):
     from .models import Author
     conference = get_object_or_404(Conference, id=conference_id)
     user = request.user
-    papers = Paper.objects.filter(conference=conference, author=user)
+    # Always fetch the latest status for each paper after any POST
+    papers = Paper.objects.filter(conference=conference, author=user).order_by(
+        models.Case(
+            models.When(status='accepted', is_paid=False, then=0),
+            default=1,
+            output_field=models.IntegerField(),
+        ),
+        '-submitted_at'
+    )
     message = ''
     if request.method == 'POST':
         paper_form = PaperSubmissionForm(request.POST, request.FILES)
@@ -409,7 +478,8 @@ def subreviewer_dashboard(request, conference_id):
     ).select_related('paper', 'invited_by')
     assigned_papers = []
     for invite in invites:
-        review_exists = Review.objects.filter(paper=invite.paper, reviewer=user).exists()
+        review = Review.objects.filter(paper=invite.paper, reviewer=user).first()
+        review_exists = review is not None
         status = invite.status
         can_answer = status == 'invited'
         can_review = status == 'accepted' and not review_exists
@@ -417,7 +487,12 @@ def subreviewer_dashboard(request, conference_id):
         if status == 'accepted' and not review_exists:
             review_status = 'Incomplete'
         elif status == 'accepted' and review_exists:
-            review_status = 'Completed'
+            if review.decision:
+                review_status = 'Approved'
+            elif review.recommendation:
+                review_status = 'Recommendation Submitted'
+            else:
+                review_status = 'Completed'
         assigned_papers.append({
             'paper': invite.paper,
             'invite': invite,
@@ -425,6 +500,7 @@ def subreviewer_dashboard(request, conference_id):
             'can_answer': can_answer,
             'can_review': can_review,
             'review_status': review_status,
+            'review': review,
         })
     nav_tabs = [
         {'label': 'Review Requests', 'active': True},
@@ -475,22 +551,37 @@ def subreviewer_review_form(request, invite_id):
     if request.method == 'POST':
         form = SubreviewerReviewForm(request.POST)
         if form.is_valid():
-            # Determine decision based on rating
+            # Determine recommendation based on rating (but don't set final decision)
             rating = int(form.cleaned_data['rating'])
             if rating >= 3:  # Strong Accept, Accept, Weak Accept
-                decision = 'accept'
+                recommendation = 'accept'
             else:  # Weak Reject, Reject, Strong Reject
-                decision = 'reject'
+                recommendation = 'reject'
             
+            # Create review with recommendation but no final decision
+            # The decision field will be null/empty until chair approves
             Review.objects.create(
                 paper=invite.paper,
                 reviewer=request.user,
-                decision=decision,
+                decision=None,  # No final decision - only recommendation
+                recommendation=recommendation,  # Store the recommendation
                 comments=form.cleaned_data['comments'],
                 rating=rating,
                 confidence=form.cleaned_data['confidence'],
                 remarks=form.cleaned_data['remarks'],
             )
+            
+            # Send notification to chair about new subreviewer review
+            from conference.models import Notification
+            Notification.objects.create(
+                recipient=invite.paper.conference.chair,
+                notification_type='paper_review',
+                title=f'New Subreviewer Review for "{invite.paper.title}"',
+                message=f'Subreviewer {request.user.get_full_name() or request.user.username} has submitted a review with {recommendation} recommendation for paper "{invite.paper.title}".',
+                related_paper=invite.paper,
+                related_conference=invite.paper.conference
+            )
+            
             return redirect('conference:subreviewer_dashboard', conference_id=invite.paper.conference.id)
     else:
         form = SubreviewerReviewForm()
@@ -523,3 +614,56 @@ context = {
     'nav_items': nav_items,
     # Optionally, set 'active_tab': 'Submissions' or whichever is active
 } 
+
+@csrf_exempt
+def stripe_webhook(request):
+    import os
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    endpoint_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
+    event = None
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except Exception:
+        return HttpResponse(status=400)
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        paper_id = session['metadata']['paper_id']
+        from .models import Paper
+        paper = Paper.objects.get(id=paper_id)
+        paper.is_paid = True
+        paper.save()
+    return HttpResponse(status=200) 
+
+@login_required
+def author_papers_view(request, conference_id):
+    conference = get_object_or_404(Conference, id=conference_id)
+    papers = Paper.objects.filter(conference=conference, author=request.user).order_by('-submitted_at')
+    return render(request, 'conference/author_papers.html', {
+        'conference': conference,
+        'papers': papers,
+    }) 
+
+def search_conferences(request):
+    """
+    Search for conferences by theme, venue, city, country, title, or acronym.
+    """
+    from django.db.models import Q
+    query = request.GET.get('q', '').strip()
+    conferences = Conference.objects.filter(is_approved=True, status__in=['upcoming', 'live'])
+    if query:
+        conferences = conferences.filter(
+            Q(name__icontains=query) |
+            Q(acronym__icontains=query) |
+            Q(theme_domain__icontains=query) |
+            Q(venue__icontains=query) |
+            Q(city__icontains=query) |
+            Q(country__icontains=query)
+        )
+    context = {
+        'search_query': query,
+        'search_results': conferences,
+    }
+    return render(request, 'conference/search_results.html', context) 

@@ -1,0 +1,17 @@
+{% if is_chair %}
+    <form method="post" class="mb-6">
+        {% csrf_token %}
+        <div class="flex items-center gap-6 mb-4">
+            <label class="font-semibold">Final Decision:</label>
+            <label class="inline-flex items-center">
+                <input type="radio" name="decision" value="accept" {% if paper.status == 'accepted' %}checked{% endif %} class="form-radio text-green-600">
+                <span class="ml-2 text-green-700">Accept</span>
+            </label>
+            <label class="inline-flex items-center">
+                <input type="radio" name="decision" value="reject" {% if paper.status == 'rejected' %}checked{% endif %} class="form-radio text-red-600">
+                <span class="ml-2 text-red-700">Reject</span>
+            </label>
+        </div>
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">Save Decision</button>
+    </form>
+{% endif %} 

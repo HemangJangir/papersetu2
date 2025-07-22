@@ -194,7 +194,6 @@ def dashboard(request):
         'is_author': is_author,
         'is_reviewer': is_reviewer,
         'chaired_confs': chaired_confs,
-        'chair_notifications': chair_notifications,
         'joined_confs': joined_confs,
         'submitted_papers': submitted_papers,
         'reviewing_confs': reviewing_confs,
@@ -797,6 +796,8 @@ def conference_submissions(request, conf_id):
             }
             for review in reviews
         ]
+        # Add latest subreviewer recommendation (for template)
+        paper.latest_subreviewer_recommendation = reviews.filter(recommendation__isnull=False, decision__isnull=True).order_by('-submitted_at').first()
     
     # Filter by status if requested
     status_filter = request.GET.get('status', 'all')
@@ -811,7 +812,8 @@ def conference_submissions(request, conf_id):
             Q(author__first_name__icontains=search_query) |
             Q(author__last_name__icontains=search_query) |
             Q(author__username__icontains=search_query) |
-            Q(abstract__icontains=search_query)
+            Q(abstract__icontains=search_query) |
+            Q(paper_id__icontains=search_query)
         )
     
     # Navigation items for the conference
@@ -2357,7 +2359,6 @@ def send_to_authors(request, conf_id):
         {'label': 'Send to authors', 'url': reverse('dashboard:send_to_authors', args=[conference.id])},
         {'label': 'Missing reviews', 'url': reverse('dashboard:missing_reviews', args=[conference.id])},
     ]
-
     # Fetch all submissions for this conference
     papers = Paper.objects.filter(conference=conference).select_related('author').order_by('id')
     submissions = []
@@ -2370,19 +2371,22 @@ def send_to_authors(request, conf_id):
             'author_email': paper.author.email,
             'detail_url': reverse('dashboard:view_paper_submission', args=[conference.id, paper.id]),
         })
-
     # Handle POST: send email to selected authors
     if request.method == 'POST':
         from django.core.mail import EmailMessage
+        import logging
         subject = request.POST.get('subject', '')
         message = request.POST.get('message', '')
         send_all = request.POST.get('send_all_authors') == 'on'
         selected_paper_ids = request.POST.getlist('selected_papers')
         # Get selected authors
         selected_authors = []
-        for sub in submissions:
-            if str(sub['id']) in selected_paper_ids:
-                selected_authors.append({'name': sub['author_name'], 'email': sub['author_email']})
+        if send_all:
+            selected_authors = [{'name': sub['author_name'], 'email': sub['author_email']} for sub in submissions]
+        else:
+            for sub in submissions:
+                if str(sub['id']) in selected_paper_ids:
+                    selected_authors.append({'name': sub['author_name'], 'email': sub['author_email']})
         # Remove duplicates
         seen_emails = set()
         unique_authors = []
@@ -2403,6 +2407,7 @@ def send_to_authors(request, conf_id):
             if attachment:
                 email_obj.attach(attachment.name, attachment.read(), attachment.content_type)
             email_obj.send(fail_silently=False)
+            print(f"[SEND_TO_AUTHOR] Sent email to: {author['email']} (subject: {subject})")
             # Log the author notification email
             PCEmailLog.objects.create(
                 subject=subject,
@@ -2424,7 +2429,6 @@ def send_to_authors(request, conf_id):
             'show_popup': True,
             'popup_names': author_names,
         })
-
     return render(request, 'dashboard/send_to_authors.html', {
         'conf_id': conf_id,
         'conference': conference,
@@ -2768,33 +2772,86 @@ def pc_subreviewers(request, conf_id):
     message = None
     message_type = None
     if request.method == 'POST':
-        paper_id = request.POST.get('paper_id')
-        user_id = request.POST.get('user_id')
-        email = request.POST.get('email')
-        if paper_id and user_id and email:
+        action = request.POST.get('action')
+        if action == 'bulk_invite':
+            paper_id = request.POST.get('paper_id')
+            bulk_list = request.POST.get('bulk_invitation_list', '').strip().split('\n')
             paper = Paper.objects.get(id=paper_id)
-            subreviewer = User.objects.get(id=user_id)
-            token = get_random_string(48)
-            invite = SubreviewerInvite.objects.create(
-                paper=paper,
-                subreviewer=subreviewer,
-                invited_by=user,
-                email=email,
-                token=token
-            )
-            UserConferenceRole.objects.get_or_create(user=subreviewer, conference=conference, role='subreviewer')
-            body = f"Dear {subreviewer.get_full_name() or subreviewer.username},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'. Please log in to your dashboard to accept or reject the request.\n\nBest regards,\n{user.get_full_name() or user.username}\nPC Member"
-            send_mail(
-                subject=f"Paper Review Assignment: '{paper.title}'",
-                message=body,
-                from_email=None,
-                recipient_list=[email],
-            )
-            message = f"Assignment email sent to {subreviewer.get_full_name() or subreviewer.username} for paper '{paper.title}'."
-            message_type = 'success'
-        else:
-            message = "Please select a paper, subreviewer, and provide an email."
-            message_type = 'error'
+            success_count = 0
+            error_count = 0
+            error_messages = []
+            for line in bulk_list:
+                if not line.strip():
+                    continue
+                # Format: Name <email>
+                if '<' in line and '>' in line:
+                    name = line.split('<')[0].strip()
+                    email = line.split('<')[1].split('>')[0].strip()
+                else:
+                    error_messages.append(f'Invalid format: {line}')
+                    error_count += 1
+                    continue
+                try:
+                    subreviewer = User.objects.filter(email=email).first()
+                    if not subreviewer:
+                        error_messages.append(f'User not found: {email}')
+                        error_count += 1
+                        continue
+                    # Check for duplicate invite
+                    if SubreviewerInvite.objects.filter(paper=paper, subreviewer=subreviewer).exists():
+                        error_messages.append(f'Already invited: {email}')
+                        error_count += 1
+                        continue
+                    token = get_random_string(48)
+                    invite = SubreviewerInvite.objects.create(
+                        paper=paper,
+                        subreviewer=subreviewer,
+                        invited_by=user,
+                        email=email,
+                        token=token
+                    )
+                    UserConferenceRole.objects.get_or_create(user=subreviewer, conference=conference, role='subreviewer')
+                    subject = f"Paper Review Assignment: '{paper.title}'"
+                    message_body = f"Dear {name},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'. Please log in to your dashboard to accept or reject the request.\n\nBest regards,\n{user.get_full_name() or user.username}\nPC Member"
+                    send_mail(subject, message_body, None, [email])
+                    success_count += 1
+                except Exception as e:
+                    error_messages.append(f'Error for {email}: {str(e)}')
+                    error_count += 1
+            message = f"Bulk invitation complete. {success_count} sent, {error_count} errors."
+            if error_messages:
+                message += '\n' + '\n'.join(error_messages[:5])
+                if len(error_messages) > 5:
+                    message += f'\n... and {len(error_messages) - 5} more errors.'
+            message_type = 'success' if success_count > 0 else 'error'
+        elif action == 'invite':
+            paper_id = request.POST.get('paper_id')
+            user_id = request.POST.get('user_id')
+            email = request.POST.get('email')
+            if paper_id and user_id and email:
+                paper = Paper.objects.get(id=paper_id)
+                subreviewer = User.objects.get(id=user_id)
+                token = get_random_string(48)
+                invite = SubreviewerInvite.objects.create(
+                    paper=paper,
+                    subreviewer=subreviewer,
+                    invited_by=user,
+                    email=email,
+                    token=token
+                )
+                UserConferenceRole.objects.get_or_create(user=subreviewer, conference=conference, role='subreviewer')
+                body = f"Dear {subreviewer.get_full_name() or subreviewer.username},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'. Please log in to your dashboard to accept or reject the request.\n\nBest regards,\n{user.get_full_name() or user.username}\nPC Member"
+                send_mail(
+                    subject=f"Paper Review Assignment: '{paper.title}'",
+                    message=body,
+                    from_email=None,
+                    recipient_list=[email],
+                )
+                message = f"Assignment email sent to {subreviewer.get_full_name() or subreviewer.username} for paper '{paper.title}'."
+                message_type = 'success'
+            else:
+                message = "Please select a paper, subreviewer, and provide an email."
+                message_type = 'error'
     # Only show invites sent by this PC member
     invites = SubreviewerInvite.objects.filter(paper__conference=conference, invited_by=user).select_related('paper', 'subreviewer')
     papers = Paper.objects.filter(conference=conference)
@@ -3216,6 +3273,11 @@ def manage_submission(request, conf_id, submission_id):
     reject_count = reviews.filter(decision='reject').count()
     pending_reviews = reviews.filter(decision__isnull=True).count()
     
+    # Count subreviewer recommendations
+    subreviewer_recommendations = reviews.filter(recommendation__isnull=False, decision__isnull=True).count()
+    accept_recommendations = reviews.filter(recommendation='accept', decision__isnull=True).count()
+    reject_recommendations = reviews.filter(recommendation='reject', decision__isnull=True).count()
+    
     # Prepare keywords list for template
     keywords_list = [k.strip() for k in paper.keywords.split(',')] if paper.keywords else []
     
@@ -3223,9 +3285,12 @@ def manage_submission(request, conf_id, submission_id):
     if request.method == 'POST':
         decision = request.POST.get('decision')
         if decision in ['accept', 'reject'] and is_chair:  # Only chair can make final decisions
-            paper.status = decision
+            # Map to model status values
+            if decision == 'accept':
+                paper.status = 'accepted'
+            elif decision == 'reject':
+                paper.status = 'rejected'
             paper.save()
-            
             # Create notification for author
             Notification.objects.create(
                 recipient=paper.author,
@@ -3235,7 +3300,6 @@ def manage_submission(request, conf_id, submission_id):
                 related_paper=paper,
                 related_conference=conference
             )
-            
             messages.success(request, f'Paper has been {decision}ed successfully.')
             # Always redirect to manage_submission to see updated data
             return redirect('dashboard:manage_submission', conf_id=conf_id, submission_id=submission_id)
@@ -3251,6 +3315,9 @@ def manage_submission(request, conf_id, submission_id):
         'accept_count': accept_count,
         'reject_count': reject_count,
         'pending_reviews': pending_reviews,
+        'subreviewer_recommendations': subreviewer_recommendations,
+        'accept_recommendations': accept_recommendations,
+        'reject_recommendations': reject_recommendations,
         'is_chair': is_chair,
         'is_pc_member': is_pc_member,
         'keywords_list': keywords_list,
@@ -3281,24 +3348,31 @@ def authors_manage(request, conf_id):
 
 @login_required
 def change_review_decision(request, conf_id, submission_id, review_id):
-    """Change review decision for a specific review"""
+    """Change review decision for a specific review and notify the author if changed."""
     conference = get_object_or_404(Conference, id=conf_id)
     paper = get_object_or_404(Paper, id=submission_id, conference=conference)
     review = get_object_or_404(Review, id=review_id, paper=paper)
-    
     # Check if user has permission to change this review
     if not (conference.chair == request.user or 
             UserConferenceRole.objects.filter(user=request.user, conference=conference, role='pc_member').exists()):
         return render(request, 'dashboard/forbidden.html', {'message': 'You do not have permission to change review decisions.'})
-    
     if request.method == 'POST':
         new_decision = request.POST.get('decision')
         rating = request.POST.get('rating')
         confidence = request.POST.get('confidence')
         comments = request.POST.get('comments', '')
         remarks = request.POST.get('remarks', '')
+        decision_changed = False
         if new_decision in ['accept', 'reject']:
+            if review.decision != new_decision:
+                decision_changed = True
             review.decision = new_decision
+            # Also update the paper status to match the final decision
+            if new_decision == 'accept':
+                paper.status = 'accepted'
+            elif new_decision == 'reject':
+                paper.status = 'rejected'
+            paper.save()
         if rating is not None and rating != '':
             review.rating = int(rating)
         else:
@@ -3310,6 +3384,18 @@ def change_review_decision(request, conf_id, submission_id, review_id):
         review.comments = comments
         review.remarks = remarks
         review.save()
+        # Send email to author if decision changed
+        if decision_changed:
+            corresponding_author = paper.authors.filter(is_corresponding=True).first()
+            if not corresponding_author:
+                corresponding_author = paper.author
+            subject = f"Paper Decision Changed for '{paper.title}' - {conference.name}"
+            body = f"Dear {corresponding_author.first_name if hasattr(corresponding_author, 'first_name') else corresponding_author.get_full_name()},\n\n"
+            body += f"The decision for your paper '{paper.title}' has been CHANGED by the {'Chair' if conference.chair == request.user else 'PC Member'}.\n\n"
+            body += f"New Decision: {review.decision.upper()}\nMarks: {review.rating}\nComments: {review.comments}\n\n"
+            body += f"Best regards,\n{conference.name} Program Committee"
+            to_email = corresponding_author.email if hasattr(corresponding_author, 'email') else corresponding_author.email
+            send_mail(subject, body, None, [to_email])
         messages.success(request, 'Review updated successfully!')
         return redirect('dashboard:manage_submission', conf_id=conf_id, submission_id=submission_id)
     
@@ -3319,6 +3405,91 @@ def change_review_decision(request, conf_id, submission_id, review_id):
         'review': review,
     }
     return render(request, 'dashboard/change_review_decision.html', context)
+
+@login_required
+@require_POST
+def approve_recommendation(request, review_id):
+    """Approve a subreviewer recommendation and set it as the final decision, and email the corresponding author."""
+    import json
+    from django.http import JsonResponse
+    review = get_object_or_404(Review, id=review_id)
+    conference = review.paper.conference
+    paper = review.paper
+    # Only chair can approve recommendations
+    if conference.chair != request.user:
+        if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': 'Only the conference chair can approve recommendations.'})
+        else:
+            return redirect('dashboard:conference_submissions', conf_id=conference.id)
+    try:
+        # Accept both AJAX and form POSTs
+        if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            data = json.loads(request.body)
+            decision = data.get('decision')
+        else:
+            decision = request.POST.get('decision')
+        if decision not in ['accept', 'reject']:
+            if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': 'Invalid decision value.'})
+            else:
+                return redirect('dashboard:conference_submissions', conf_id=conference.id)
+        # Set the recommendation as the final decision
+        review.decision = decision
+        review.save()
+        # Update the paper status as well
+        if decision == 'accept':
+            paper.status = 'accepted'
+        elif decision == 'reject':
+            paper.status = 'rejected'
+        paper.save()
+        # Send notification to the subreviewer
+        Notification.objects.create(
+            recipient=review.reviewer,
+            notification_type='paper_review',
+            title=f'Your Review Recommendation Approved',
+            message=f'Your {decision} recommendation for paper "{review.paper.title}" has been approved by the conference chair.',
+            related_paper=review.paper,
+            related_conference=conference
+        )
+        # Find corresponding author
+        corresponding_author = paper.authors.filter(is_corresponding=True).first()
+        if not corresponding_author:
+            # fallback to main author
+            corresponding_author = paper.author
+        # Compose email
+        subject = f"Paper Decision for '{paper.title}' - {conference.name}"
+        if decision == 'accept':
+            body = f"Dear {corresponding_author.first_name if hasattr(corresponding_author, 'first_name') else corresponding_author.get_full_name()},\n\n"
+            body += f"We are pleased to inform you that your paper '{paper.title}' has been ACCEPTED.\n\n"
+            body += f"Marks: {review.rating}\nComments: {review.comments}\n\n"
+            body += "This decision is based on the subreviewer's recommendation, as approved by the conference chair.\n\n"
+        else:
+            body = f"Dear {corresponding_author.first_name if hasattr(corresponding_author, 'first_name') else corresponding_author.get_full_name()},\n\n"
+            body += f"We regret to inform you that your paper '{paper.title}' has been REJECTED.\n\n"
+            body += f"Marks: {review.rating}\nComments: {review.comments}\n\n"
+            body += "This decision is based on the subreviewer's recommendation, as approved by the conference chair.\n\n"
+        body += f"Best regards,\n{conference.name} Program Committee"
+        # Send email
+        to_email = corresponding_author.email if hasattr(corresponding_author, 'email') else corresponding_author.email
+        send_mail(subject, body, None, [to_email])
+        # Redirect to referring page or submissions page
+        if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': f'Recommendation approved as {decision}.'})
+        else:
+            next_url = request.META.get('HTTP_REFERER')
+            if next_url:
+                return redirect(next_url)
+            return redirect('dashboard:conference_submissions', conf_id=conference.id)
+    except json.JSONDecodeError:
+        if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': 'Invalid JSON data.'})
+        else:
+            return redirect('dashboard:conference_submissions', conf_id=conference.id)
+    except Exception as e:
+        if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': str(e)})
+        else:
+            return redirect('dashboard:conference_submissions', conf_id=conference.id)
 
 @login_required
 def add_review(request, conf_id, submission_id):

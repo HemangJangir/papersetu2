@@ -1,0 +1,32 @@
+{% extends 'homepage.html' %}
+{% block content %}
+    <!-- Conference Search Section (already included in homepage.html) -->
+    <!-- Only show results if not already rendered by homepage -->
+    {% if search_results is not None %}
+    <div class="glass card-animated-border rounded-xl shadow-lg p-6 border border-blue-100 mb-8">
+        <div class="card-content">
+            <h2 class="text-2xl font-bold text-blue-700 mb-4">Search Results</h2>
+            {% if search_results %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {% for conference in search_results %}
+                        <div class="bg-white rounded-lg shadow p-4 border border-blue-100 flex flex-col justify-between">
+                            <div>
+                                <h3 class="text-lg font-bold text-blue-800 mb-1">{{ conference.acronym|default:conference.name|truncatechars:20 }}</h3>
+                                <p class="text-blue-400 text-sm mb-1">{{ conference.name|truncatechars:40 }}</p>
+                                <div class="text-gray-600 text-sm mb-1"><i class="fas fa-map-marker-alt mr-1"></i> {{ conference.venue|default:"TBD" }}{% if conference.city %}, {{ conference.city }}{% endif %}, {{ conference.country }}</div>
+                                <div class="text-gray-600 text-sm mb-1"><i class="fas fa-tag mr-1"></i> {{ conference.theme_domain|default:conference.get_primary_area_display }}</div>
+                                <div class="text-gray-600 text-sm mb-1"><i class="fas fa-calendar mr-1"></i> {{ conference.start_date|date:"M d" }} - {{ conference.end_date|date:"M d, Y" }}</div>
+                            </div>
+                            <div class="mt-2">
+                                <a href="/conference/{{ conference.id }}/choose-role/" class="glow-btn bg-white/80 border-2 border-blue-400 text-blue-800 font-bold rounded-full px-4 py-2 shadow transition-all duration-200 text-center">View</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-600">No conferences found matching your search.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+{% endblock %} 

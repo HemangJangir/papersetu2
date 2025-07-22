@@ -35,9 +35,25 @@ def homepage(request):
         if SubreviewerInvite.objects.filter(paper__conference=conference, subreviewer=user, status__in=['invited', 'accepted']).exists():
             if 'subreviewer' not in conference.user_roles:
                 conference.user_roles = list(conference.user_roles) + ['subreviewer']
+    # Conference search for homepage
+    search_query = request.GET.get('q', '').strip()
+    search_results = None
+    if search_query:
+        search_results = Conference.objects.filter(
+            is_approved=True, status__in=['upcoming', 'live']
+        ).filter(
+            Q(name__icontains=search_query) |
+            Q(acronym__icontains=search_query) |
+            Q(theme_domain__icontains=search_query) |
+            Q(venue__icontains=search_query) |
+            Q(city__icontains=search_query) |
+            Q(country__icontains=search_query)
+        )
     context = {
         'user': user,
         'user_conferences': all_confs,
+        'search_query': search_query,
+        'search_results': search_results,
     }
     return render(request, 'homepage.html', context)
 

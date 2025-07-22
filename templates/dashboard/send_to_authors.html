@@ -39,195 +39,194 @@
 
         <!-- Hidden submit button for JS to trigger -->
         <button type="submit" id="realSubmitBtn" class="hidden"></button>
+
+        <!-- Selection Section -->
+        <div class="bg-white rounded-lg shadow p-6 mb-8 border mt-8">
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Selection</h3>
+            <p class="text-sm text-gray-600 mb-4">You can select papers individually or by ticking the boxes in the table below.</p>
+            <div class="flex items-center gap-6 mb-4">
+                <label class="inline-flex items-center">
+                    <input type="radio" name="select_mode" value="all" class="form-radio text-blue-600" onclick="selectAll(true)">
+                    <span class="ml-2">select all submissions</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="radio" name="select_mode" value="none" class="form-radio text-blue-600" checked onclick="selectAll(false)">
+                    <span class="ml-2">unselect all submissions</span>
+                </label>
+            </div>
+            <div class="bg-yellow-100 border-l-4 border-yellow-400 p-4 rounded mb-2 flex gap-6">
+                <label class="inline-flex items-center">
+                    <input type="checkbox" id="filter_accept" class="form-checkbox text-green-600" onchange="filterDecision('ACCEPT')">
+                    <span class="ml-2 text-green-800 font-semibold">ACCEPT</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="checkbox" id="filter_reject" class="form-checkbox text-red-600" onchange="filterDecision('REJECT')">
+                    <span class="ml-2 text-red-800 font-semibold">REJECT</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Submissions Section -->
+        <div class="bg-white rounded-lg shadow p-6 border">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Submissions</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2"><input type="checkbox" id="select_all" onclick="toggleAllRows(this)"></th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Author</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Decision</th>
+                            <th class="px-4 py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="submissionsTable" class="bg-white divide-y divide-gray-200">
+                        {% for sub in submissions %}
+                        <tr data-decision="{{ sub.decision }}">
+                            <td class="px-4 py-2"><input type="checkbox" class="row-checkbox" name="selected_papers" value="{{ sub.id }}" data-author="{{ sub.author_name }}" data-email="{{ sub.author_email }}"></td>
+                            <td class="px-4 py-2">{{ forloop.counter }}</td>
+                            <td class="px-4 py-2">
+                                <a href="{{ sub.detail_url }}" class="text-blue-600 hover:underline">{{ sub.author_name }}</a><br>
+                                <span class="text-xs text-gray-500">{{ sub.author_email }}</span>
+                            </td>
+                            <td class="px-4 py-2">{{ sub.title }}</td>
+                            <td class="px-4 py-2">
+                                {% if sub.decision == 'ACCEPTED' or sub.decision == 'ACCEPT' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">ACCEPT</span>
+                                {% elif sub.decision == 'REJECTED' or sub.decision == 'REJECT' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">REJECT</span>
+                                {% else %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">{{ sub.decision|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-2 text-center"><i class="fas fa-pencil-alt text-gray-400 hover:text-blue-600 cursor-pointer"></i></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center text-gray-400 py-8">No submissions found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </form>
 
-    <!-- Selection Section -->
-    <div class="bg-white rounded-lg shadow p-6 mb-8 border">
-        <h3 class="text-lg font-semibold text-gray-800 mb-2">Selection</h3>
-        <p class="text-sm text-gray-600 mb-4">You can select papers individually or by ticking the boxes in the table below.</p>
-        <div class="flex items-center gap-6 mb-4">
-            <label class="inline-flex items-center">
-                <input type="radio" name="select_mode" value="all" class="form-radio text-blue-600" onclick="selectAll(true)">
-                <span class="ml-2">select all submissions</span>
-            </label>
-            <label class="inline-flex items-center">
-                <input type="radio" name="select_mode" value="none" class="form-radio text-blue-600" checked onclick="selectAll(false)">
-                <span class="ml-2">unselect all submissions</span>
-            </label>
-        </div>
-        <div class="bg-yellow-100 border-l-4 border-yellow-400 p-4 rounded mb-2 flex gap-6">
-            <label class="inline-flex items-center">
-                <input type="checkbox" id="filter_accept" class="form-checkbox text-green-600" onchange="filterDecision('ACCEPT')">
-                <span class="ml-2 text-green-800 font-semibold">ACCEPT</span>
-            </label>
-            <label class="inline-flex items-center">
-                <input type="checkbox" id="filter_reject" class="form-checkbox text-red-600" onchange="filterDecision('REJECT')">
-                <span class="ml-2 text-red-800 font-semibold">REJECT</span>
-            </label>
+    <!-- Email Preview Modal -->
+    <div id="emailModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+        <div class="bg-white rounded-lg shadow-lg max-w-lg w-full p-8 relative">
+            <button onclick="closeModal()" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700"><i class="fas fa-times"></i></button>
+            <h3 class="text-xl font-semibold mb-4">Email Preview</h3>
+            <div class="mb-2"><span class="font-semibold">Subject:</span> <span id="modalSubject"></span></div>
+            <div class="mb-2"><span class="font-semibold">Message:</span></div>
+            <div id="modalMessages"></div>
+            <div class="mb-2"><span class="font-semibold">Attachment:</span> <span id="modalAttachment">None</span></div>
+            <div class="mb-4">
+                <span class="font-semibold">Authors:</span>
+                <ul id="modalAuthors" class="list-disc ml-6 mt-1 text-sm"></ul>
+            </div>
+            <button id="sendEmailBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow transition flex items-center justify-center">
+                <i class="fas fa-paper-plane mr-2"></i> Send Email
+            </button>
         </div>
     </div>
 
-    <!-- Submissions Section -->
-    <div class="bg-white rounded-lg shadow p-6 border">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Submissions</h3>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-4 py-2"><input type="checkbox" id="select_all" onclick="toggleAllRows(this)"></th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Author</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Decision</th>
-                        <th class="px-4 py-2"></th>
-                    </tr>
-                </thead>
-                <tbody id="submissionsTable" class="bg-white divide-y divide-gray-200">
-                    {% for sub in submissions %}
-                    <tr data-decision="{{ sub.decision }}">
-                        <td class="px-4 py-2"><input type="checkbox" class="row-checkbox" name="selected_papers" value="{{ sub.id }}" data-author="{{ sub.author_name }}" data-email="{{ sub.author_email }}"></td>
-                        <td class="px-4 py-2">{{ forloop.counter }}</td>
-                        <td class="px-4 py-2">
-                            <a href="{{ sub.detail_url }}" class="text-blue-600 hover:underline">{{ sub.author_name }}</a><br>
-                            <span class="text-xs text-gray-500">{{ sub.author_email }}</span>
-                        </td>
-                        <td class="px-4 py-2">{{ sub.title }}</td>
-                        <td class="px-4 py-2">
-                            {% if sub.decision == 'ACCEPTED' or sub.decision == 'ACCEPT' %}
-                                <span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">ACCEPT</span>
-                            {% elif sub.decision == 'REJECTED' or sub.decision == 'REJECT' %}
-                                <span class="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">REJECT</span>
-                            {% else %}
-                                <span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">{{ sub.decision|title }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-2 text-center"><i class="fas fa-pencil-alt text-gray-400 hover:text-blue-600 cursor-pointer"></i></td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="6" class="text-center text-gray-400 py-8">No submissions found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <!-- Success Popup -->
+    <div id="successPopup" class="fixed top-8 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded shadow-lg z-50 hidden">
+        <span id="successText"></span>
     </div>
-</div>
-
-<!-- Email Preview Modal -->
-<div id="emailModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
-    <div class="bg-white rounded-lg shadow-lg max-w-lg w-full p-8 relative">
-        <button onclick="closeModal()" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700"><i class="fas fa-times"></i></button>
-        <h3 class="text-xl font-semibold mb-4">Email Preview</h3>
-        <div class="mb-2"><span class="font-semibold">Subject:</span> <span id="modalSubject"></span></div>
-        <div class="mb-2"><span class="font-semibold">Message:</span></div>
-        <div id="modalMessages"></div>
-        <div class="mb-2"><span class="font-semibold">Attachment:</span> <span id="modalAttachment">None</span></div>
-        <div class="mb-4">
-            <span class="font-semibold">Authors:</span>
-            <ul id="modalAuthors" class="list-disc ml-6 mt-1 text-sm"></ul>
-        </div>
-        <button id="sendEmailBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow transition flex items-center justify-center">
-            <i class="fas fa-paper-plane mr-2"></i> Send Email
-        </button>
-    </div>
-</div>
-
-<!-- Success Popup -->
-<div id="successPopup" class="fixed top-8 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded shadow-lg z-50 hidden">
-    <span id="successText"></span>
-</div>
-{% if show_popup %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    showSuccessPopup("{{ popup_names|escapejs }}");
-});
-</script>
-{% endif %}
-
-<script>
-// Select all/unselect all submissions
-function selectAll(select) {
-    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = select);
-    document.getElementById('select_all').checked = select;
-}
-function toggleAllRows(source) {
-    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = source.checked);
-}
-// Filter by decision
-function filterDecision(decision) {
-    const accept = document.getElementById('filter_accept').checked;
-    const reject = document.getElementById('filter_reject').checked;
-    document.querySelectorAll('#submissionsTable tr').forEach(row => {
-        const rowDecision = row.getAttribute('data-decision');
-        if ((accept && rowDecision === 'ACCEPT') || (reject && rowDecision === 'REJECT') || (!accept && !reject)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
+    {% if show_popup %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        showSuccessPopup("{{ popup_names|escapejs }}");
     });
-}
+    </script>
+    {% endif %}
 
-// Modal logic
-const emailModal = document.getElementById('emailModal');
-const viewEmailBtn = document.getElementById('viewEmailBtn');
-const sendEmailBtn = document.getElementById('sendEmailBtn');
-const realSubmitBtn = document.getElementById('realSubmitBtn');
-const emailForm = document.getElementById('emailForm');
-const successPopup = document.getElementById('successPopup');
-const successText = document.getElementById('successText');
+    <script>
+    // Select all/unselect all submissions
+    function selectAll(select) {
+        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = select);
+        document.getElementById('select_all').checked = select;
+    }
+    function toggleAllRows(source) {
+        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = source.checked);
+    }
+    // Filter by decision
+    function filterDecision(decision) {
+        const accept = document.getElementById('filter_accept').checked;
+        const reject = document.getElementById('filter_reject').checked;
+        document.querySelectorAll('#submissionsTable tr').forEach(row => {
+            const rowDecision = row.getAttribute('data-decision');
+            if ((accept && rowDecision === 'ACCEPT') || (reject && rowDecision === 'REJECT') || (!accept && !reject)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
 
-viewEmailBtn.onclick = function() {
-    // Gather form data
-    const subject = document.getElementById('subject').value;
-    const message = document.getElementById('message').value;
-    const attachmentInput = document.getElementById('attachment');
-    const attachment = attachmentInput.files.length > 0 ? attachmentInput.files[0].name : 'None';
-    const sendAll = document.getElementById('send_all_authors').checked;
-    // Gather selected authors
-    const selected = Array.from(document.querySelectorAll('.row-checkbox:checked'));
-    const authors = selected.map(cb => ({
-        name: cb.getAttribute('data-author'),
-        email: cb.getAttribute('data-email')
-    }));
-    // Fill modal
-    document.getElementById('modalSubject').textContent = subject;
-    document.getElementById('modalAttachment').textContent = attachment;
-    const modalAuthors = document.getElementById('modalAuthors');
-    modalAuthors.innerHTML = '';
-    authors.forEach(a => {
-        const li = document.createElement('li');
-        li.textContent = a.name + ' (' + a.email + ')';
-        modalAuthors.appendChild(li);
-    });
-    // Show personalized message for each author
-    const modalMessages = document.getElementById('modalMessages');
-    modalMessages.innerHTML = '';
-    authors.forEach(a => {
-        const div = document.createElement('div');
-        div.className = 'mb-2';
-        div.innerHTML = `<span class='font-semibold'>To:</span> <span>${a.name} (${a.email})</span><br><pre class='bg-gray-50 rounded p-2 text-sm whitespace-pre-wrap'>${message.replace(/\{\*NAME\*\}/g, a.name)}</pre>`;
-        modalMessages.appendChild(div);
-    });
-    // Show modal
-    emailModal.classList.remove('hidden');
-}
-function closeModal() {
-    emailModal.classList.add('hidden');
-}
+    // Modal logic
+    const emailModal = document.getElementById('emailModal');
+    const viewEmailBtn = document.getElementById('viewEmailBtn');
+    const sendEmailBtn = document.getElementById('sendEmailBtn');
+    const realSubmitBtn = document.getElementById('realSubmitBtn');
+    const emailForm = document.getElementById('emailForm');
+    const successPopup = document.getElementById('successPopup');
+    const successText = document.getElementById('successText');
 
-sendEmailBtn.onclick = function() {
-    closeModal();
-    emailForm.submit();
-}
+    viewEmailBtn.onclick = function() {
+        // Gather form data
+        const subject = document.getElementById('subject').value;
+        const message = document.getElementById('message').value;
+        const attachmentInput = document.getElementById('attachment');
+        const attachment = attachmentInput.files.length > 0 ? attachmentInput.files[0].name : 'None';
+        const sendAll = document.getElementById('send_all_authors').checked;
+        // Gather selected authors
+        const selected = Array.from(document.querySelectorAll('.row-checkbox:checked'));
+        const authors = selected.map(cb => ({
+            name: cb.getAttribute('data-author'),
+            email: cb.getAttribute('data-email')
+        }));
+        // Fill modal
+        document.getElementById('modalSubject').textContent = subject;
+        document.getElementById('modalAttachment').textContent = attachment;
+        const modalAuthors = document.getElementById('modalAuthors');
+        modalAuthors.innerHTML = '';
+        authors.forEach(a => {
+            const li = document.createElement('li');
+            li.textContent = a.name + ' (' + a.email + ')';
+            modalAuthors.appendChild(li);
+        });
+        // Show personalized message for each author
+        const modalMessages = document.getElementById('modalMessages');
+        modalMessages.innerHTML = '';
+        authors.forEach(a => {
+            const div = document.createElement('div');
+            div.className = 'mb-2';
+            div.innerHTML = `<span class='font-semibold'>To:</span> <span>${a.name} (${a.email})</span><br><pre class='bg-gray-50 rounded p-2 text-sm whitespace-pre-wrap'>${message.replace(/\{\*NAME\*\}/g, a.name)}</pre>`;
+            modalMessages.appendChild(div);
+        });
+        // Show modal
+        emailModal.classList.remove('hidden');
+    }
+    function closeModal() {
+        emailModal.classList.add('hidden');
+    }
 
-// Success popup and redirect
-function showSuccessPopup(names) {
-    successText.textContent = 'Email sent to ' + names;
-    successPopup.classList.remove('hidden');
-    setTimeout(function() {
-        successPopup.classList.add('hidden');
-        window.location.href = "{% url 'dashboard:conference_submissions' conference.id %}";
-    }, 2000);
-}
-</script>
+    sendEmailBtn.onclick = function() {
+        closeModal();
+        emailForm.submit();
+    }
+
+    // Success popup and redirect
+    function showSuccessPopup(names) {
+        successText.textContent = 'Email sent to ' + names;
+        successPopup.classList.remove('hidden');
+        setTimeout(function() {
+            successPopup.classList.add('hidden');
+            window.location.href = "{% url 'dashboard:conference_submissions' conference.id %}";
+        }, 2000);
+    }
+    </script>
 </body>
 </html> 
