@@ -1,0 +1,83 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Latest News - PaperSetu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="min-h-screen bg-gray-100 flex flex-col">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-30">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <img src="{% static 'images/LOGO BG.png' %}" alt="PaperSetu Logo" class="w-16 h-16 rounded-full shadow mr-2">
+                <span class="text-2xl font-bold text-indigo-800 tracking-tight">PaperSetu</span>
+            </div>
+            <div class="flex items-center space-x-8">
+                <a href="/home/" class="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors font-semibold">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </a>
+                <a href="#" class="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors font-semibold">
+                    <i class="fas fa-file-alt"></i>
+                    <span>PaperSetu</span>
+                </a>
+                <a href="/news/" class="flex items-center space-x-2 text-blue-700 font-semibold">
+                    <i class="fas fa-newspaper"></i>
+                    <span>News</span>
+                </a>
+                <a href="/accounts/logout/" class="flex items-center space-x-2 text-red-600 hover:text-red-700 transition-colors font-semibold">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+    <!-- Main Content -->
+    <main class="flex-grow max-w-[90%] mx-auto px-4 py-8">
+        <section class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-extrabold mb-4 text-blue-700 leading-tight">
+                Latest News
+            </h1>
+            <p class="text-xl text-gray-600 mb-6">Stay up to date with the latest updates and announcements from PaperSetu.</p>
+        </section>
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+            <!-- Example News Card -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-blue-100 flex flex-col transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <h2 class="text-2xl font-bold text-blue-800 mb-2">PaperSetu 2.0 Launch</h2>
+                <p class="text-gray-600 mb-4">We are excited to announce the launch of PaperSetu 2.0 with new features and a refreshed design!</p>
+                <span class="text-sm text-gray-400">June 2024</span>
+            </div>
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-blue-100 flex flex-col transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <h2 class="text-2xl font-bold text-blue-800 mb-2">Upcoming Conference Support</h2>
+                <p class="text-gray-600 mb-4">Now you can manage upcoming conferences more efficiently with our new dashboard tools.</p>
+                <span class="text-sm text-gray-400">May 2024</span>
+            </div>
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-blue-100 flex flex-col transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <h2 class="text-2xl font-bold text-blue-800 mb-2">Mobile Experience Improved</h2>
+                <p class="text-gray-600 mb-4">Enjoy a smoother experience on mobile devices with our latest responsive updates.</p>
+                <span class="text-sm text-gray-400">April 2024</span>
+            </div>
+        </section>
+    </main>
+    <!-- Footer -->
+    <footer class="bg-gray-100 text-gray-800 py-8 mt-12 border-t border-gray-300">
+        <div class="mx-auto w-[90%] px-4">
+
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <span class="font-bold text-lg">PaperSetu</span> &copy; {% now "Y" %}
+                </div>
+                <div class="flex space-x-6">
+                    <a href="#" class="hover:text-blue-600 transition-colors">About</a>
+                    <a href="#" class="hover:text-blue-600 transition-colors">Support</a>
+                    <a href="#" class="hover:text-blue-600 transition-colors">Privacy</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html> 

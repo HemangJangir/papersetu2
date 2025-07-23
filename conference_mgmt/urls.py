@@ -68,6 +68,8 @@ urlpatterns = [
     path('accounts/', include('accounts.urls', namespace='accounts')),
     path('conference/', include('conference.urls', namespace='conference')),
     path('dashboard/', include('dashboard.urls', namespace='dashboard')),
+    path('login/', lambda request: redirect('/accounts/login/', permanent=True)),
+    path('news/', lambda request: render(request, 'news.html'), name='news'),
     path('', root_redirect, name='landing'),
     path('home/', homepage, name='homepage'),
 ]

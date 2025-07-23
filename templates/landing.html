@@ -39,66 +39,63 @@
 <body class="bg-gray-50 text-gray-900">
 
   <!-- Header Section -->
-  <header class="sticky top-0 z-50 bg-gray-50/90 backdrop-blur shadow-sm transition-shadow">
-    <div class="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
-      <div class="flex items-center gap-2">
-        <img src="{% static 'images/LOGO BG.png' %}" alt="PaperSetu Logo" class="w-10 h-10 rounded-full shadow bg-white">
+  <header class="sticky top-0 z-50 bg-gray-50/90 backdrop-blur shadow-sm">
+    <div class="max-w-screen-xl mx-auto flex items-center justify-between px-6 py-3">
+      <!-- Logo -->
+      <a href="/" class="flex items-center gap-2">
+        <img src="logo.png" alt="Logo" class="w-10 h-10 rounded-full shadow bg-white">
         <span class="text-2xl font-bold text-indigo-800">PaperSetu</span>
-      </div>
-      <nav class="hidden md:flex items-center gap-8">
-        <a href="#" class="nav-link font-medium transition-colors duration-200 ease-in-out hover:text-blue-500 hover:underline underline-offset-4">Home</a>
-        <a href="#features" class="nav-link font-medium transition-colors duration-200 ease-in-out hover:text-blue-500 hover:underline underline-offset-4">Features</a>
-        <a href="#how" class="nav-link font-medium transition-colors duration-200 ease-in-out hover:text-blue-500 hover:underline underline-offset-4">How it Works</a>
-        <a href="#contact" class="nav-link font-medium transition-colors duration-200 ease-in-out hover:text-blue-500 hover:underline underline-offset-4">Contact Us</a>
-        <a href="/accounts/login/" class="ml-4 px-5 py-2 rounded-full bg-indigo-800 text-white font-semibold shadow transition-colors duration-200 ease-in-out hover:bg-indigo-900">Login / Signup</a>
+      </a>
+      <!-- Nav -->
+      <nav class="hidden md:flex items-center gap-4">
+        <a href="#" class="text-gray-700 hover:text-indigo-700">Home</a>
+        <a href="#features" class="text-gray-700 hover:text-indigo-700">Features</a>
+        <a href="#how" class="text-gray-700 hover:text-indigo-700">How it Works</a>
+        <a href="#contact" class="text-gray-700 hover:text-indigo-700">Contact</a>
+        <a href="/accounts/login/" class="ml-2 px-4 py-2 rounded-full bg-indigo-800 text-white shadow hover:bg-indigo-900">Login / Signup</a>
       </nav>
-      <div class="md:hidden">
-        <button class="p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-800" aria-label="Open menu">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-indigo-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-    </div>
     </div>
   </header>
+  
 
     <!-- Hero Section -->
-  <section class="w-full bg-gradient-to-br from-gray-50 to-blue-50 py-16 md:py-28" data-aos="fade-up">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between px-4 gap-10">
-      <div class="flex-1 flex flex-col items-center md:items-start text-center md:text-left gap-6">
-        <h1 class="text-4xl md:text-6xl font-extrabold text-indigo-800 leading-tight">
+    <section class="w-full bg-white min-h-screen flex items-center py-0" data-aos="fade-up">
+
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between px-4 gap-10 w-full h-full">
+      <div class="flex-1 flex flex-col items-center md:items-start text-center md:text-left gap-8">
+        <h1 class="text-3xl md:text-5xl font-extrabold text-indigo-800 leading-tight">
           Manage Your Research Conferences with Ease
-            </h1>
-        <p class="text-lg md:text-2xl text-gray-700 max-w-xl">
+        </h1>
+        <p class="text-xl md:text-2xl text-gray-700 max-w-2xl">
           PaperSetu streamlines submissions, reviews, and collaboration for every conference role—all in one place.
         </p>
-        <div class="flex flex-col sm:flex-row gap-4 mt-2">
+        <div class="flex flex-col sm:flex-row gap-6 mt-4">
           <a href="/accounts/login/"
-            class="primary-btn bg-white text-indigo-800 border-2 border-indigo-800 font-semibold rounded-full px-8 py-3 shadow-lg transition duration-300 ease-in-out transform hover:scale-110 hover:bg-indigo-800 hover:text-white hover:shadow-2xl hover:border-indigo-800 focus:outline-none focus:ring-4 focus:ring-indigo-300">
+            class="primary-btn bg-white text-indigo-800 border-2 border-indigo-800 font-semibold rounded-full px-12 py-4 text-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-110 hover:bg-indigo-800 hover:text-white hover:shadow-2xl hover:border-indigo-800 focus:outline-none focus:ring-4 focus:ring-indigo-300">
             Get Started
           </a>
-          <a href="#features"
-            class="secondary-btn bg-white text-indigo-800 border-2 border-indigo-800 font-semibold rounded-full px-8 py-3 shadow-lg transition duration-300 ease-in-out transform hover:scale-110 hover:bg-indigo-800 hover:text-white hover:shadow-2xl hover:border-indigo-800 focus:outline-none focus:ring-4 focus:ring-indigo-300">
+          <a href="/login"
+            class="secondary-btn bg-white text-indigo-800 border-2 border-indigo-800 font-semibold rounded-full px-12 py-4 text-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-110 hover:bg-indigo-800 hover:text-white hover:shadow-2xl hover:border-indigo-800 focus:outline-none focus:ring-4 focus:ring-indigo-300">
             Create Conference
           </a>
         </div>
       </div>
       <div class="flex-1 flex justify-center items-center mt-10 md:mt-0">
         <!-- Hero Image Slider Start -->
-        <div class="w-full max-w-md mx-auto rellax" data-rellax-speed="3" data-rellax-xs-speed="1" data-rellax-mobile-speed="1">
+        <div class="w-full max-w-xl mx-auto rellax" data-rellax-speed="3" data-rellax-xs-speed="1" data-rellax-mobile-speed="1">
           <div class="swiper hero-swiper rounded-2xl overflow-hidden shadow-xl border-2 border-blue-400/30">
             <div class="swiper-wrapper">
               <!-- Slide 1 -->
               <div class="swiper-slide">
-                <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=500&q=80" alt="Conference Slide 1" class="w-full h-64 object-cover" />
+                <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=800&q=80" alt="Conference Slide 1" class="w-full h-96 object-cover" />
               </div>
               <!-- Slide 2 -->
               <div class="swiper-slide">
-                <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=500&q=80" alt="Conference Slide 2" class="w-full h-64 object-cover" />
+                <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80" alt="Conference Slide 2" class="w-full h-96 object-cover" />
               </div>
               <!-- Slide 3 -->
               <div class="swiper-slide">
-                <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=500&q=80" alt="Conference Slide 3" class="w-full h-64 object-cover" />
+                <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80" alt="Conference Slide 3" class="w-full h-96 object-cover" />
               </div>
             </div>
             <!-- Pagination Dots -->
@@ -112,7 +109,7 @@
 
   <!-- Features Section -->
     <section id="features" class="w-full bg-white/80 py-20 relative z-10">
-      <div class="max-w-6xl mx-auto px-4 rellax" data-rellax-speed="2" data-rellax-xs-speed="1" data-rellax-mobile-speed="1">
+      <div class="max-w-6xl mx-auto px-4">
         <h2 class="text-3xl md:text-4xl font-bold text-indigo-800 text-center mb-12">
           Key Features
         </h2>
@@ -156,8 +153,8 @@
     </section>
 
     <!-- How it Works Section (unchanged, glass effect added) -->
-    <section id="how" class="w-full bg-gray-50/80 py-20 relative z-10">
-      <div class="max-w-5xl mx-auto px-4 rellax pt-0 pb-0" data-rellax-speed="2" data-rellax-xs-speed="1" data-rellax-mobile-speed="1">
+    <section id="how" class="w-full bg-white/80 py-7 relative z-10">
+      <div class="max-w-5xl mx-auto px-4 pt-0 pb-0">
         <h2 class="text-3xl md:text-4xl font-bold text-indigo-800 text-center mb-12">
           How It Works
         </h2>
@@ -200,7 +197,7 @@
     </section>
 
     <!-- Testimonials Section (unchanged, glass effect added) -->
-    <section id="testimonials" class="w-full bg-white/80 py-20 relative z-10">
+    <section id="testimonials" class="w-full bg-white/80 py-8 relative z-10 mt-20">
       <div class="max-w-5xl mx-auto px-4 mt-0 mb-0 pt-0">
         <h2 class="text-3xl md:text-4xl font-bold text-indigo-800 text-center mb-12">
           What Our Users Say
@@ -228,21 +225,7 @@
       </div>
     </section>
 
-    <!-- Call to Action (CTA) Section (bolder, glass effect) -->
-    <section class="w-full bg-gradient-to-r from-indigo-800 to-blue-500 py-16 relative z-10">
-      <div class="max-w-3xl mx-auto px-4 flex flex-col items-center text-center">
-        <h2 class="text-3xl md:text-4xl font-bold text-white mb-4 drop-shadow-lg">
-          Join PaperSetu Today
-        </h2>
-        <p class="text-lg md:text-xl text-blue-100 mb-8">
-          Experience seamless conference management, from submission to review and beyond.
-        </p>
-        <a href="/accounts/login/"
-          class="inline-block px-10 py-4 rounded-full bg-yellow-400 text-indigo-800 font-bold text-lg shadow-xl transition hover:bg-yellow-300 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-yellow-300">
-          Get Started
-        </a>
-      </div>
-    </section>
+   
   </main>
   <!-- Footer (unchanged) -->
   <footer class="w-full bg-gray-900 text-gray-200 py-10 relative z-10">
