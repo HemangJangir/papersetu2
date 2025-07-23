@@ -8,35 +8,15 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <style>
-        body {
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Background Image with Blur */
-        .login-bg::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: url("{% static 'images/BACKGROUND.jpg' %}") no-repeat center center fixed;
-            background-size: cover;
-            filter: blur(8px); /* Adjust blur strength as needed */
-            z-index: -1;
-        }
-    </style>
 </head>
 
-<body class="login-bg min-h-screen flex items-center justify-center bg-gray-200">
+<body class="min-h-screen flex items-center justify-center bg-gray-100	">
 
   <div id="auth-container"
-     class="w-full max-w-5xl mx-auto flex flex-col md:flex-row rounded-3xl border border-gray-200 hover:border-blue-500 transition-all duration-300 overflow-hidden bg-white/50 relative min-h-[750px] backdrop-blur-sm">
+     class="w-full max-w-[calc(64rem-10px)] mx-auto flex flex-col md:flex-row rounded-3xl border border-gray-200 transition-all duration-300 overflow-hidden bg-white/50 relative min-h-[740px] backdrop-blur-sm">
 
     <!-- Login Form Section -->
-    <div id="login-section" class="w-full md:w-1/2 flex flex-col justify-center items-center p-20 bg-white min-h-[750px] transition-all duration-500">
+    <div id="login-section" class="w-full md:w-1/2 flex flex-col justify-center items-center p-20 bg-white min-h-[740px] transition-all duration-500">
       <h2 class="text-4xl font-bold text-gray-900 mb-4">Sign In</h2>
       <div class="text-gray-400 text-lg mb-6">or use your email password</div>
       <form method="post" action="" class="w-full max-w-md space-y-6">
@@ -76,7 +56,7 @@
     </div>
 
     <!-- Right Section -->
-    <div id="hello-section" class="w-full md:w-1/2 flex flex-col justify-center items-center bg-white p-20 relative min-h-[750px] transition-all duration-500 overflow-hidden">
+    <div id="hello-section" class="w-full md:w-1/2 flex flex-col justify-center items-center bg-white p-20 relative min-h-[740px] transition-all duration-500 overflow-hidden">
       <div class="absolute left-0 top-0 w-[120%] h-full bg-gradient-to-br from-indigo-900 to-indigo-700 rounded-tl-[200px] rounded-bl-[200px] z-0"></div>
       <div class="relative z-10 flex flex-col items-center text-center">
         <h2 class="text-4xl font-bold mb-4 text-white">Hello, Friend!</h2>
@@ -92,7 +72,7 @@
     <div id="register-overlay"
       class="absolute inset-0 w-full h-full flex flex-col md:flex-row bg-white/95 rounded-3xl shadow-2xl overflow-hidden z-20 {% if signup_form.errors or signup_form.non_field_errors %}opacity-100{% else %}opacity-0 pointer-events-none{% endif %} transition-all duration-500">
       <!-- Left Section -->
-      <div class="w-full md:w-1/2 flex flex-col justify-center items-center bg-white p-20 relative min-h-[750px] overflow-hidden">
+      <div class="w-full md:w-1/2 flex flex-col justify-center items-center bg-white p-20 relative min-h-[740px] overflow-hidden">
         <div class="absolute right-0 top-0 w-[120%] h-full bg-gradient-to-br from-indigo-900 to-indigo-700 rounded-tr-[200px] rounded-br-[200px] z-0"></div>
         <div class="relative z-10 flex flex-col items-center text-center">
           <h2 class="text-4xl font-bold mb-4 text-white">Welcome Back!</h2>
@@ -105,7 +85,7 @@
       </div>
 
       <!-- Registration Form Section -->
-      <div class="w-full md:w-1/2 flex flex-col justify-center items-center p-20 bg-white min-h-[750px]">
+      <div class="w-full md:w-1/2 flex flex-col justify-center items-center p-20 bg-white min-h-[740px]">
         <h2 class="text-4xl font-bold text-gray-900 mb-4">Create Account</h2>
         <div class="text-gray-400 text-lg mb-6">or use your email for registration</div>
         {% if signup_form.errors or signup_form.non_field_errors %}
