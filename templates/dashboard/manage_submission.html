@@ -177,6 +177,23 @@
                             </div>
                         </div>
                         {% endif %}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Plagiarism %</label>
+                            <div class="flex items-center gap-2">
+                                {% if paper.plagiarism_percentage is not None %}
+                                    <span class="font-semibold">{{ paper.plagiarism_percentage }}%</span>
+                                {% else %}
+                                    <span class="text-gray-400">-</span>
+                                {% endif %}
+                                {% if is_chair %}
+                                <form method="post" class="flex items-center gap-2 ml-4">
+                                    {% csrf_token %}
+                                    <input type="number" min="0" max="100" name="plagiarism_percentage" id="plagiarism_percentage" value="{{ paper.plagiarism_percentage }}" class="w-20 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                                    <button type="submit" name="update_plagiarism" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded">Save</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
                 </div>
                 

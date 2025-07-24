@@ -1850,35 +1850,37 @@ def subreviewers(request, conf_id):
             if paper_id and user_id and email:
                 paper = Paper.objects.get(id=paper_id)
                 subreviewer = User.objects.get(id=user_id)
-                token = get_random_string(48)
-                invite = SubreviewerInvite.objects.create(
-                    paper=paper,
-                    subreviewer=subreviewer,
-                    invited_by=request.user,
-                    email=email,
-                    token=token
-                )
-                # Ensure subreviewer role exists for this user/conference
-                UserConferenceRole.objects.get_or_create(user=subreviewer, conference=conference, role='subreviewer')
-                # Send assignment email (no invite link)
-                body = f"Dear {subreviewer.get_full_name() or subreviewer.username},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'. Please log in to your dashboard to accept or reject the request.\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair/PC Member"
-                send_mail(
-                    subject=f"Paper Review Assignment: '{paper.title}'",
-                    message=body,
-                    from_email=None,
-                    recipient_list=[email],
-                )
-                # Log the subreviewer invitation email
-                PCEmailLog.objects.create(
-                    subject=f"Paper Review Assignment: '{paper.title}'",
-                    body=body,
-                    recipients=email,
-                    conference=conference,
-                    sender=request.user,
-                    attachment_name='',
-                )
-                message = f"Assignment email sent to {subreviewer.get_full_name() or subreviewer.username} for paper '{paper.title}'."
-                message_type = 'success'
+                # Prevent duplicate invite
+                if SubreviewerInvite.objects.filter(paper=paper, subreviewer=subreviewer).exists():
+                    message = f"This subreviewer has already been invited for this paper."
+                    message_type = 'error'
+                else:
+                    token = get_random_string(48)
+                    invite = SubreviewerInvite.objects.create(
+                        paper=paper,
+                        subreviewer=subreviewer,
+                        invited_by=request.user,
+                        email=email,
+                        token=token
+                    )
+                    UserConferenceRole.objects.get_or_create(user=subreviewer, conference=conference, role='subreviewer')
+                    body = f"Dear {subreviewer.get_full_name() or subreviewer.username},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'. Please log in to your dashboard to accept or reject the request.\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair/PC Member"
+                    send_mail(
+                        subject=f"Paper Review Assignment: '{paper.title}'",
+                        message=body,
+                        from_email=None,
+                        recipient_list=[email],
+                    )
+                    PCEmailLog.objects.create(
+                        subject=f"Paper Review Assignment: '{paper.title}'",
+                        body=body,
+                        recipients=email,
+                        conference=conference,
+                        sender=request.user,
+                        attachment_name='',
+                    )
+                    message = f"Assignment email sent to {subreviewer.get_full_name() or subreviewer.username} for paper '{paper.title}'."
+                    message_type = 'success'
             else:
                 message = "Please select a paper, subreviewer, and provide an email."
                 message_type = 'error'
@@ -3334,6 +3336,20 @@ def manage_submission(request, conf_id, submission_id):
     
     # Handle decision submission
     if request.method == 'POST':
+        # Plagiarism percentage update
+        if is_chair and 'update_plagiarism' in request.POST:
+            try:
+                plagiarism_percentage = int(request.POST.get('plagiarism_percentage', '').strip())
+                if 0 <= plagiarism_percentage <= 100:
+                    paper.plagiarism_percentage = plagiarism_percentage
+                    paper.save()
+                    messages.success(request, 'Plagiarism percentage updated successfully.')
+                else:
+                    messages.error(request, 'Plagiarism percentage must be between 0 and 100.')
+            except (ValueError, TypeError):
+                messages.error(request, 'Invalid plagiarism percentage value.')
+            return redirect('dashboard:manage_submission', conf_id=conf_id, submission_id=submission_id)
+        # Decision update
         decision = request.POST.get('decision')
         if decision in ['accept', 'reject'] and is_chair:  # Only chair can make final decisions
             # Map to model status values
@@ -3682,25 +3698,35 @@ def view_submission_details(request, conf_id, submission_id):
     """View detailed information about a submission"""
     conference = get_object_or_404(Conference, id=conf_id)
     paper = get_object_or_404(Paper, id=submission_id, conference=conference)
-    
-    # Check if user is assigned to review this paper
     user_review = Review.objects.filter(paper=paper, reviewer=request.user).first()
-    if not user_review:
-        messages.error(request, 'You are not assigned to review this paper.')
-        return redirect('dashboard:all_submissions', conf_id=conf_id)
-    
+    # Determine if the user is the chair
+    is_chair = conference.chair == request.user
+
+    # Handle plagiarism percentage update by chair
+    if request.method == 'POST' and is_chair and 'update_plagiarism' in request.POST:
+        try:
+            plagiarism_percentage = int(request.POST.get('plagiarism_percentage', '').strip())
+            if 0 <= plagiarism_percentage <= 100:
+                paper.plagiarism_percentage = plagiarism_percentage
+                paper.save()
+                messages.success(request, 'Plagiarism percentage updated successfully.')
+            else:
+                messages.error(request, 'Plagiarism percentage must be between 0 and 100.')
+        except (ValueError, TypeError):
+            messages.error(request, 'Invalid plagiarism percentage value.')
+        return redirect('dashboard:view_submission_details', conf_id=conf_id, submission_id=submission_id)
+
     # Get all reviews for this paper
     reviews = paper.reviews.all().select_related('reviewer')
-    
     # Get subreviewer invites
     subreviewer_invites = paper.subreviewer_invites.all().select_related('subreviewer', 'invited_by')
-    
     context = {
         'conference': conference,
         'paper': paper,
         'user_review': user_review,
         'reviews': reviews,
         'subreviewer_invites': subreviewer_invites,
+        'is_chair': is_chair,
     }
     return render(request, 'dashboard/view_submission_details.html', context)
 

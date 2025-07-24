@@ -501,17 +501,38 @@ def subreviewer_dashboard(request, conference_id):
             'can_review': can_review,
             'review_status': review_status,
             'review': review,
+            'plagiarism_percentage': invite.paper.plagiarism_percentage,
         })
+    # Determine which tab is active
+    active_tab = request.GET.get('tab', 'Review Requests')
     nav_tabs = [
-        {'label': 'Review Requests', 'active': True},
-        {'label': 'Conference', 'active': False},
-        {'label': 'News', 'active': False},
-        {'label': 'Paper Setup', 'active': False},
+        {'label': 'Review Requests', 'active': active_tab == 'Review Requests'},
+        {'label': 'Conference', 'active': active_tab == 'Conference'},
+        {'label': 'News', 'active': active_tab == 'News'},
+        {'label': 'Paper Setup', 'active': active_tab == 'Paper Setup'},
     ]
+
+    conferences_with_roles = []
+    if active_tab == 'Conference':
+        from conference.models import UserConferenceRole
+        user_roles = UserConferenceRole.objects.filter(user=user).select_related('conference')
+        # Group by conference, collect all roles for each
+        conf_dict = {}
+        for ur in user_roles:
+            if ur.conference.id not in conf_dict:
+                conf_dict[ur.conference.id] = {
+                    'conference': ur.conference,
+                    'roles': []
+                }
+            conf_dict[ur.conference.id]['roles'].append(ur.role)
+        conferences_with_roles = list(conf_dict.values())
+
     context = {
         'conference': conference,
         'assigned_papers': assigned_papers,
         'nav_tabs': nav_tabs,
+        'active_tab': active_tab,
+        'conferences_with_roles': conferences_with_roles,
     }
     return render(request, 'conference/subreviewer_dashboard.html', context)
 
@@ -589,20 +610,18 @@ def subreviewer_review_form(request, invite_id):
 
 @login_required
 def download_paper(request, paper_id):
-    from conference.models import Paper
+    from conference.models import SubreviewerInvite
     paper = get_object_or_404(Paper, id=paper_id)
-    # Only allow download if user is assigned as subreviewer or reviewer for this paper
     user = request.user
-    is_subreviewer = paper.subreviewer_invites.filter(subreviewer=user, status__in=['invited', 'accepted']).exists()
-    is_reviewer = paper.reviews.filter(reviewer=user).exists()
-    if not (is_subreviewer or is_reviewer or paper.author == user or user == paper.conference.chair):
+    # Only allow download if user is the author, chair, or accepted subreviewer
+    is_author = paper.author == user
+    is_chair = paper.conference.chair == user
+    is_accepted_subreviewer = SubreviewerInvite.objects.filter(paper=paper, subreviewer=user, status='accepted').exists()
+    if not (is_author or is_chair or is_accepted_subreviewer):
         raise Http404("You do not have permission to download this paper.")
     if not paper.file:
         raise Http404("Paper file not found.")
-    file_path = paper.file.path
-    if not os.path.exists(file_path):
-        raise Http404("File does not exist.")
-    response = FileResponse(open(file_path, 'rb'), as_attachment=True, filename=os.path.basename(file_path))
+    response = FileResponse(paper.file.open('rb'), as_attachment=True, filename=os.path.basename(paper.file.name))
     return response
 
 nav_items = [
@@ -667,3 +686,24 @@ def search_conferences(request):
         'search_results': conferences,
     }
     return render(request, 'conference/search_results.html', context) 
+
+@login_required
+def role_based_dashboard(request, conference_id):
+    from conference.models import UserConferenceRole
+    conference = get_object_or_404(Conference, id=conference_id)
+    user = request.user
+    # Get all roles for this user in this conference
+    roles = list(UserConferenceRole.objects.filter(user=user, conference=conference).values_list('role', flat=True))
+    # Priority: chair > pc_member > author > reviewer > subreviewer
+    if conference.chair == user or 'chair' in roles:
+        return redirect('dashboard:conference_configuration', conf_id=conference.id)
+    elif 'pc_member' in roles:
+        return redirect('dashboard:pc_conference_detail', conf_id=conference.id)
+    elif 'author' in roles:
+        return redirect('dashboard:author_dashboard', conference_id=conference.id)
+    elif 'reviewer' in roles:
+        return redirect('dashboard:assigned_to_me', conf_id=conference.id)
+    elif 'subreviewer' in roles:
+        return redirect('conference:subreviewer_dashboard', conference_id=conference.id)
+    else:
+        return redirect('dashboard:conference_details', conf_id=conference.id) 
