@@ -1882,6 +1882,57 @@ def subreviewers(request, conf_id):
             else:
                 message = "Please select a paper, subreviewer, and provide an email."
                 message_type = 'error'
+        elif action == 'bulk_invite':
+            paper_id = request.POST.get('paper_id')
+            bulk_list = request.POST.get('bulk_invitation_list', '').strip().split('\n')
+            paper = Paper.objects.get(id=paper_id)
+            success_count = 0
+            error_count = 0
+            error_messages = []
+            for line in bulk_list:
+                if not line.strip():
+                    continue
+                # Format: Name <email>
+                if '<' in line and '>' in line:
+                    name = line.split('<')[0].strip()
+                    email = line.split('<')[1].split('>')[0].strip()
+                else:
+                    error_messages.append(f'Invalid format: {line}')
+                    error_count += 1
+                    continue
+                try:
+                    subreviewer = User.objects.filter(email=email).first()
+                    if not subreviewer:
+                        error_messages.append(f'User not found: {email}')
+                        error_count += 1
+                        continue
+                    # Check for duplicate invite
+                    if SubreviewerInvite.objects.filter(paper=paper, subreviewer=subreviewer).exists():
+                        error_messages.append(f'Already invited: {email}')
+                        error_count += 1
+                        continue
+                    token = get_random_string(48)
+                    invite = SubreviewerInvite.objects.create(
+                        paper=paper,
+                        subreviewer=subreviewer,
+                        invited_by=request.user,
+                        email=email,
+                        token=token
+                    )
+                    UserConferenceRole.objects.get_or_create(user=subreviewer, conference=conference, role='subreviewer')
+                    subject = f"Paper Review Assignment: '{paper.title}'"
+                    message_body = f"Dear {name},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'. Please log in to your dashboard to accept or reject the request.\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair"
+                    send_mail(subject, message_body, None, [email])
+                    success_count += 1
+                except Exception as e:
+                    error_messages.append(f'Error for {email}: {str(e)}')
+                    error_count += 1
+            message = f"Bulk invitation complete. {success_count} sent, {error_count} errors."
+            if error_messages:
+                message += '\n' + '\n'.join(error_messages[:5])
+                if len(error_messages) > 5:
+                    message += f'\n... and {len(error_messages) - 5} more errors.'
+            message_type = 'success' if success_count > 0 else 'error'
 
     # List all invites for this conference
     invites = SubreviewerInvite.objects.filter(paper__conference=conference).select_related('paper', 'subreviewer', 'invited_by')
@@ -2812,7 +2863,7 @@ def pc_subreviewers(request, conf_id):
                     )
                     UserConferenceRole.objects.get_or_create(user=subreviewer, conference=conference, role='subreviewer')
                     subject = f"Paper Review Assignment: '{paper.title}'"
-                    message_body = f"Dear {name},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'. Please log in to your dashboard to accept or reject the request.\n\nBest regards,\n{user.get_full_name() or user.username}\nPC Member"
+                    message_body = f"Dear {name},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'. Please log in to your dashboard to accept or reject the request.\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair"
                     send_mail(subject, message_body, None, [email])
                     success_count += 1
                 except Exception as e:
