@@ -15,6 +15,7 @@ urlpatterns = [
     path('paper/<int:paper_id>/download/', views.download_paper, name='download_paper'),
     path('author/<int:conference_id>/papers/', views.author_papers_view, name='author_papers'),
     path('search/', views.search_conferences, name='search_conferences'),
+    path('conference/<int:conference_id>/role-dashboard/', views.role_based_dashboard, name='role_based_dashboard'),
 ]
 
 urlpatterns += [

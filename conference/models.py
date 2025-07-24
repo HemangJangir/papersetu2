@@ -138,6 +138,7 @@ class Paper(models.Model):
     payment_amount = models.PositiveIntegerField(default=500)  # in INR
     is_final_list = models.BooleanField(default=False, help_text="Mark if this paper is included in the final endorsed list")
     keywords = models.CharField(max_length=255, blank=True, help_text="Comma-separated keywords")
+    plagiarism_percentage = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Plagiarism percentage (0-100)")
 
     def __str__(self):
         return self.title
