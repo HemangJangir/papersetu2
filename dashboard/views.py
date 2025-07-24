@@ -3300,6 +3300,20 @@ def manage_submission(request, conf_id, submission_id):
                 related_paper=paper,
                 related_conference=conference
             )
+            # Send email to author when final decision is made from manage page
+            corresponding_author = paper.authors.filter(is_corresponding=True).first()
+            if not corresponding_author:
+                corresponding_author = paper.author
+            subject = f"Paper Decision for '{paper.title}' - {conference.name}"
+            if decision == 'accept':
+                body = f"Dear {corresponding_author.first_name if hasattr(corresponding_author, 'first_name') else corresponding_author.get_full_name()},\n\n"
+                body += f"We are pleased to inform you that your paper '{paper.title}' has been ACCEPTED.\n\n"
+            else:
+                body = f"Dear {corresponding_author.first_name if hasattr(corresponding_author, 'first_name') else corresponding_author.get_full_name()},\n\n"
+                body += f"We regret to inform you that your paper '{paper.title}' has been REJECTED.\n\n"
+            body += f"Best regards,\n{conference.name} Program Committee"
+            to_email = corresponding_author.email if hasattr(corresponding_author, 'email') else corresponding_author.email
+            send_mail(subject, body, None, [to_email])
             messages.success(request, f'Paper has been {decision}ed successfully.')
             # Always redirect to manage_submission to see updated data
             return redirect('dashboard:manage_submission', conf_id=conf_id, submission_id=submission_id)
@@ -3409,7 +3423,7 @@ def change_review_decision(request, conf_id, submission_id, review_id):
 @login_required
 @require_POST
 def approve_recommendation(request, review_id):
-    """Approve a subreviewer recommendation and set it as the final decision, and email the corresponding author."""
+    """Approve a subreviewer recommendation and set it as the final decision, and email the corresponding author if accepted. If rejected, set paper status to pending and do not email author."""
     import json
     from django.http import JsonResponse
     review = get_object_or_404(Review, id=review_id)
@@ -3436,45 +3450,49 @@ def approve_recommendation(request, review_id):
         # Set the recommendation as the final decision
         review.decision = decision
         review.save()
-        # Update the paper status as well
+        # Update the paper status and handle email logic
         if decision == 'accept':
             paper.status = 'accepted'
-        elif decision == 'reject':
-            paper.status = 'rejected'
-        paper.save()
-        # Send notification to the subreviewer
-        Notification.objects.create(
-            recipient=review.reviewer,
-            notification_type='paper_review',
-            title=f'Your Review Recommendation Approved',
-            message=f'Your {decision} recommendation for paper "{review.paper.title}" has been approved by the conference chair.',
-            related_paper=review.paper,
-            related_conference=conference
-        )
-        # Find corresponding author
-        corresponding_author = paper.authors.filter(is_corresponding=True).first()
-        if not corresponding_author:
-            # fallback to main author
-            corresponding_author = paper.author
-        # Compose email
-        subject = f"Paper Decision for '{paper.title}' - {conference.name}"
-        if decision == 'accept':
+            paper.save()
+            # Send notification to the subreviewer
+            Notification.objects.create(
+                recipient=review.reviewer,
+                notification_type='paper_review',
+                title=f'Your Review Recommendation Approved',
+                message=f'Your {decision} recommendation for paper "{review.paper.title}" has been approved by the conference chair.',
+                related_paper=review.paper,
+                related_conference=conference
+            )
+            # Find corresponding author
+            corresponding_author = paper.authors.filter(is_corresponding=True).first()
+            if not corresponding_author:
+                # fallback to main author
+                corresponding_author = paper.author
+            # Compose email
+            subject = f"Paper Decision for '{paper.title}' - {conference.name}"
             body = f"Dear {corresponding_author.first_name if hasattr(corresponding_author, 'first_name') else corresponding_author.get_full_name()},\n\n"
             body += f"We are pleased to inform you that your paper '{paper.title}' has been ACCEPTED.\n\n"
             body += f"Marks: {review.rating}\nComments: {review.comments}\n\n"
             body += "This decision is based on the subreviewer's recommendation, as approved by the conference chair.\n\n"
-        else:
-            body = f"Dear {corresponding_author.first_name if hasattr(corresponding_author, 'first_name') else corresponding_author.get_full_name()},\n\n"
-            body += f"We regret to inform you that your paper '{paper.title}' has been REJECTED.\n\n"
-            body += f"Marks: {review.rating}\nComments: {review.comments}\n\n"
-            body += "This decision is based on the subreviewer's recommendation, as approved by the conference chair.\n\n"
-        body += f"Best regards,\n{conference.name} Program Committee"
-        # Send email
-        to_email = corresponding_author.email if hasattr(corresponding_author, 'email') else corresponding_author.email
-        send_mail(subject, body, None, [to_email])
+            body += f"Best regards,\n{conference.name} Program Committee"
+            to_email = corresponding_author.email if hasattr(corresponding_author, 'email') else corresponding_author.email
+            send_mail(subject, body, None, [to_email])
+        elif decision == 'reject':
+            # Set paper status to 'pending' (not rejected), do not email author
+            paper.status = 'pending'
+            paper.save()
+            # Send notification to the subreviewer
+            Notification.objects.create(
+                recipient=review.reviewer,
+                notification_type='paper_review',
+                title=f'Your Review Recommendation Rejected',
+                message=f'Your reject recommendation for paper "{review.paper.title}" has been rejected by the conference chair. The final decision will be made separately.',
+                related_paper=review.paper,
+                related_conference=conference
+            )
         # Redirect to referring page or submissions page
         if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': True, 'message': f'Recommendation approved as {decision}.'})
+            return JsonResponse({'success': True, 'message': f'Recommendation processed as {decision}.'})
         else:
             next_url = request.META.get('HTTP_REFERER')
             if next_url:
