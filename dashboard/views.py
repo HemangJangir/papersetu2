@@ -778,7 +778,11 @@ def conference_submissions(request, conf_id):
     # Get all papers submitted to this conference
     papers = Paper.objects.filter(conference=conference).select_related('author').order_by('-submitted_at')
     
-    # Add review statistics for each paper
+    # Filter by status if requested
+    status_filter = request.GET.get('status', 'all')
+    if status_filter != 'all':
+        papers = papers.filter(status=status_filter)
+    # Re-calculate review statistics for filtered papers
     for paper in papers:
         reviews = paper.reviews.all()
         paper.total_reviews = reviews.count()
@@ -786,8 +790,6 @@ def conference_submissions(request, conf_id):
         paper.accept_count = reviews.filter(decision='accept').count()
         paper.reject_count = reviews.filter(decision='reject').count()
         paper.pending_reviews = paper.total_reviews - paper.reviews_with_decision
-        
-        # Get list of assigned reviewers
         paper.assigned_reviewers = [
             {
                 'user': review.reviewer,
@@ -796,13 +798,7 @@ def conference_submissions(request, conf_id):
             }
             for review in reviews
         ]
-        # Add latest subreviewer recommendation (for template)
         paper.latest_subreviewer_recommendation = reviews.filter(recommendation__isnull=False, decision__isnull=True).order_by('-submitted_at').first()
-    
-    # Filter by status if requested
-    status_filter = request.GET.get('status', 'all')
-    if status_filter != 'all':
-        papers = papers.filter(status=status_filter)
     
     # Search functionality
     search_query = request.GET.get('search', '')
@@ -3312,7 +3308,7 @@ def manage_submission(request, conf_id, submission_id):
     additional_authors = paper.authors.all()
     
     # Always fetch the latest reviews for this paper
-    reviews = paper.reviews.all().select_related('reviewer').order_by('-submitted_at')
+    reviews = paper.reviews.exclude(decision='reject').select_related('reviewer').order_by('-submitted_at')
     
     # Get subreviewers for this paper
     subreviewers = User.objects.filter(
@@ -3352,6 +3348,7 @@ def manage_submission(request, conf_id, submission_id):
         # Decision update
         decision = request.POST.get('decision')
         if decision in ['accept', 'reject'] and is_chair:  # Only chair can make final decisions
+            old_status = paper.status
             # Map to model status values
             if decision == 'accept':
                 paper.status = 'accepted'
@@ -3367,7 +3364,7 @@ def manage_submission(request, conf_id, submission_id):
                 related_paper=paper,
                 related_conference=conference
             )
-            # Send email to author when final decision is made from manage page
+            # Always send email to author when final decision is set/changed
             corresponding_author = paper.authors.filter(is_corresponding=True).first()
             if not corresponding_author:
                 corresponding_author = paper.author
@@ -3380,7 +3377,10 @@ def manage_submission(request, conf_id, submission_id):
                 body += f"We regret to inform you that your paper '{paper.title}' has been REJECTED.\n\n"
             body += f"Best regards,\n{conference.name} Program Committee"
             to_email = corresponding_author.email if hasattr(corresponding_author, 'email') else corresponding_author.email
-            send_mail(subject, body, None, [to_email])
+            try:
+                send_mail(subject, body, None, [to_email])
+            except Exception as e:
+                print(f"[ERROR] Failed to send decision email to {to_email}: {e}")
             messages.success(request, f'Paper has been {decision}ed successfully.')
             # Always redirect to manage_submission to see updated data
             return redirect('dashboard:manage_submission', conf_id=conf_id, submission_id=submission_id)
@@ -3429,35 +3429,26 @@ def authors_manage(request, conf_id):
 
 @login_required
 def change_review_decision(request, conf_id, submission_id, review_id):
-    """Change review decision for a specific review and notify the author if changed."""
+    """Change review marks/comments for a specific review (no final decision here)."""
     conference = get_object_or_404(Conference, id=conf_id)
     paper = get_object_or_404(Paper, id=submission_id, conference=conference)
     review = get_object_or_404(Review, id=review_id, paper=paper)
     # Check if user has permission to change this review
-    if not (conference.chair == request.user or 
+    if not (conference.chair == request.user or \
             UserConferenceRole.objects.filter(user=request.user, conference=conference, role='pc_member').exists()):
         return render(request, 'dashboard/forbidden.html', {'message': 'You do not have permission to change review decisions.'})
     if request.method == 'POST':
-        new_decision = request.POST.get('decision')
-        rating = request.POST.get('rating')
-        confidence = request.POST.get('confidence')
+        # Only allow updating marks (rating), comments, and remarks
+        marks = request.POST.get('marks')
         comments = request.POST.get('comments', '')
         remarks = request.POST.get('remarks', '')
-        decision_changed = False
-        if new_decision in ['accept', 'reject']:
-            if review.decision != new_decision:
-                decision_changed = True
-            review.decision = new_decision
-            # Also update the paper status to match the final decision
-            if new_decision == 'accept':
-                paper.status = 'accepted'
-            elif new_decision == 'reject':
-                paper.status = 'rejected'
-            paper.save()
-        if rating is not None and rating != '':
-            review.rating = int(rating)
+        confidence = request.POST.get('confidence')
+        # Update marks (rating)
+        if marks is not None and marks != '':
+            review.rating = int(marks)
         else:
             review.rating = None
+        # Update confidence if present
         if confidence is not None and confidence != '':
             review.confidence = int(confidence)
         else:
@@ -3465,21 +3456,8 @@ def change_review_decision(request, conf_id, submission_id, review_id):
         review.comments = comments
         review.remarks = remarks
         review.save()
-        # Send email to author if decision changed
-        if decision_changed:
-            corresponding_author = paper.authors.filter(is_corresponding=True).first()
-            if not corresponding_author:
-                corresponding_author = paper.author
-            subject = f"Paper Decision Changed for '{paper.title}' - {conference.name}"
-            body = f"Dear {corresponding_author.first_name if hasattr(corresponding_author, 'first_name') else corresponding_author.get_full_name()},\n\n"
-            body += f"The decision for your paper '{paper.title}' has been CHANGED by the {'Chair' if conference.chair == request.user else 'PC Member'}.\n\n"
-            body += f"New Decision: {review.decision.upper()}\nMarks: {review.rating}\nComments: {review.comments}\n\n"
-            body += f"Best regards,\n{conference.name} Program Committee"
-            to_email = corresponding_author.email if hasattr(corresponding_author, 'email') else corresponding_author.email
-            send_mail(subject, body, None, [to_email])
         messages.success(request, 'Review updated successfully!')
         return redirect('dashboard:manage_submission', conf_id=conf_id, submission_id=submission_id)
-    
     context = {
         'conference': conference,
         'paper': paper,
@@ -3557,6 +3535,11 @@ def approve_recommendation(request, review_id):
                 related_paper=review.paper,
                 related_conference=conference
             )
+            # Send real email to subreviewer
+            subject = f"Your Review Has Been Rejected - {conference.name}"
+            body = f"Dear {review.reviewer.get_full_name() or review.reviewer.username},\n\nYour review for the paper '{paper.title}' has been rejected by the chair of {conference.name}. The final decision will be made separately.\n\nBest regards,\n{conference.name} Program Committee"
+            to_email = review.reviewer.email
+            send_mail(subject, body, None, [to_email])
         # Redirect to referring page or submissions page
         if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({'success': True, 'message': f'Recommendation processed as {decision}.'})
@@ -3586,19 +3569,20 @@ def add_review(request, conf_id, submission_id):
         messages.error(request, 'You are not assigned to review this paper.')
         return redirect('dashboard:all_submissions', conf_id=conf_id)
     if request.method == 'POST':
-        comments = request.POST.get('comments', '')
-        rating = request.POST.get('rating')
+        marks = request.POST.get('marks')
         confidence = request.POST.get('confidence')
-        # Only chair can set decision
-        if is_chair:
-            decision = request.POST.get('decision')
-            if decision in ['accept', 'reject']:
-                user_review.decision = decision
-        user_review.comments = comments
-        if rating:
-            user_review.rating = int(rating)
-        if confidence:
+        comments = request.POST.get('comments', '')
+        remarks = request.POST.get('remarks', '')
+        if marks is not None and marks != '':
+            user_review.rating = int(marks)
+        else:
+            user_review.rating = None
+        if confidence is not None and confidence != '':
             user_review.confidence = int(confidence)
+        else:
+            user_review.confidence = None
+        user_review.comments = comments
+        user_review.remarks = remarks
         user_review.save()
         messages.success(request, 'Review submitted successfully!')
         return redirect('dashboard:all_submissions', conf_id=conf_id)
@@ -3620,19 +3604,20 @@ def update_review(request, conf_id, submission_id):
         messages.error(request, 'You do not have a review for this paper.')
         return redirect('dashboard:all_submissions', conf_id=conf_id)
     if request.method == 'POST':
-        comments = request.POST.get('comments', '')
-        rating = request.POST.get('rating')
+        marks = request.POST.get('marks')
         confidence = request.POST.get('confidence')
-        # Only chair can set decision
-        if is_chair:
-            decision = request.POST.get('decision')
-            if decision in ['accept', 'reject']:
-                user_review.decision = decision
-        user_review.comments = comments
-        if rating:
-            user_review.rating = int(rating)
-        if confidence:
+        comments = request.POST.get('comments', '')
+        remarks = request.POST.get('remarks', '')
+        if marks is not None and marks != '':
+            user_review.rating = int(marks)
+        else:
+            user_review.rating = None
+        if confidence is not None and confidence != '':
             user_review.confidence = int(confidence)
+        else:
+            user_review.confidence = None
+        user_review.comments = comments
+        user_review.remarks = remarks
         user_review.save()
         messages.success(request, 'Review updated successfully!')
         return redirect('dashboard:all_submissions', conf_id=conf_id)

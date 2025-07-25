@@ -85,68 +85,55 @@
             <form method="post" class="space-y-6">
                 {% csrf_token %}
                 
-                <!-- Decision Section -->
+                <!-- Marks Section -->
                 <div class="bg-white border border-gray-200 rounded-lg p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-gavel text-blue-600 mr-2"></i>
-                        Review Decision
+                        <i class="fas fa-star text-blue-600 mr-2"></i>
+                        Subreviewer/PC Member Marks
                     </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-3">Decision *</label>
-                            <div class="space-y-3">
-                                <label class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-green-50 cursor-pointer transition duration-150">
-                                    <input type="radio" name="decision" value="accept" 
-                                           class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
-                                           {% if review.decision == 'accept' %}checked{% endif %} required>
-                                    <div class="ml-3">
-                                        <div class="flex items-center">
-                                            <i class="fas fa-check text-green-600 mr-2"></i>
-                                            <span class="font-medium text-gray-900">Accept</span>
-                                        </div>
-                                        <p class="text-sm text-gray-500">Recommend this paper for acceptance</p>
-                                    </div>
-                                </label>
-                                <label class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-red-50 cursor-pointer transition duration-150">
-                                    <input type="radio" name="decision" value="reject" 
-                                           class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
-                                           {% if review.decision == 'reject' %}checked{% endif %} required>
-                                    <div class="ml-3">
-                                        <div class="flex items-center">
-                                            <i class="fas fa-times text-red-600 mr-2"></i>
-                                            <span class="font-medium text-gray-900">Reject</span>
-                                        </div>
-                                        <p class="text-sm text-gray-500">Recommend this paper for rejection</p>
-                                    </div>
-                                </label>
-                            </div>
+                    <div class="space-y-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Marks *</label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <label class="flex items-center p-2 border border-gray-200 rounded-lg cursor-pointer transition duration-150">
+                                <input type="radio" name="marks" value="3" class="h-4 w-4 text-green-700 focus:ring-green-500 border-gray-300" {% if review.rating == 3 %}checked{% endif %} required>
+                                <span class="ml-2 font-medium text-green-800">Strong Accept (+3)</span>
+                            </label>
+                            <label class="flex items-center p-2 border border-gray-200 rounded-lg cursor-pointer transition duration-150">
+                                <input type="radio" name="marks" value="2" class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300" {% if review.rating == 2 %}checked{% endif %} required>
+                                <span class="ml-2 font-medium text-green-700">Accept (+2)</span>
+                            </label>
+                            <label class="flex items-center p-2 border border-gray-200 rounded-lg cursor-pointer transition duration-150">
+                                <input type="radio" name="marks" value="1" class="h-4 w-4 text-green-500 focus:ring-green-500 border-gray-300" {% if review.rating == 1 %}checked{% endif %} required>
+                                <span class="ml-2 font-medium text-green-600">Weak Accept (+1)</span>
+                            </label>
+                            <label class="flex items-center p-2 border border-gray-200 rounded-lg cursor-pointer transition duration-150">
+                                <input type="radio" name="marks" value="0" class="h-4 w-4 text-gray-500 focus:ring-gray-500 border-gray-300" {% if review.rating == 0 %}checked{% endif %} required>
+                                <span class="ml-2 font-medium text-gray-700">Borderline (0)</span>
+                            </label>
+                            <label class="flex items-center p-2 border border-gray-200 rounded-lg cursor-pointer transition duration-150">
+                                <input type="radio" name="marks" value="-1" class="h-4 w-4 text-red-400 focus:ring-red-500 border-gray-300" {% if review.rating == -1 %}checked{% endif %} required>
+                                <span class="ml-2 font-medium text-red-500">Weak Reject (-1)</span>
+                            </label>
+                            <label class="flex items-center p-2 border border-gray-200 rounded-lg cursor-pointer transition duration-150">
+                                <input type="radio" name="marks" value="-2" class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300" {% if review.rating == -2 %}checked{% endif %} required>
+                                <span class="ml-2 font-medium text-red-600">Reject (-2)</span>
+                            </label>
+                            <label class="flex items-center p-2 border border-gray-200 rounded-lg cursor-pointer transition duration-150">
+                                <input type="radio" name="marks" value="-3" class="h-4 w-4 text-red-800 focus:ring-red-700 border-gray-300" {% if review.rating == -3 %}checked{% endif %} required>
+                                <span class="ml-2 font-medium text-red-800">Strong Reject (-3)</span>
+                            </label>
                         </div>
-                        
-                        <div class="space-y-4">
-                            <div>
-                                <label for="rating" class="block text-sm font-medium text-gray-700 mb-2">Rating (1-5)</label>
-                                <select name="rating" id="rating" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                    <option value="">Select rating</option>
-                                    {% for i in "12345" %}
-                                    <option value="{{ forloop.counter }}" {% if review.rating == forloop.counter %}selected{% endif %}>
-                                        {{ forloop.counter }} - {% if forloop.counter == 1 %}Poor{% elif forloop.counter == 2 %}Fair{% elif forloop.counter == 3 %}Good{% elif forloop.counter == 4 %}Very Good{% else %}Excellent{% endif %}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label for="confidence" class="block text-sm font-medium text-gray-700 mb-2">Confidence (1-5)</label>
-                                <select name="confidence" id="confidence" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                    <option value="">Select confidence</option>
-                                    {% for i in "12345" %}
-                                    <option value="{{ forloop.counter }}" {% if review.confidence == forloop.counter %}selected{% endif %}>
-                                        {{ forloop.counter }} - {% if forloop.counter == 1 %}Very Low{% elif forloop.counter == 2 %}Low{% elif forloop.counter == 3 %}Medium{% elif forloop.counter == 4 %}High{% else %}Very High{% endif %}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label for="confidence" class="block text-sm font-medium text-gray-700 mb-2">Confidence (1-5)</label>
+                        <select name="confidence" id="confidence" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Select confidence</option>
+                            {% for i in "12345" %}
+                            <option value="{{ forloop.counter }}" {% if review.confidence == forloop.counter %}selected{% endif %}>
+                                {{ forloop.counter }} - {% if forloop.counter == 1 %}Very Low{% elif forloop.counter == 2 %}Low{% elif forloop.counter == 3 %}Medium{% elif forloop.counter == 4 %}High{% else %}Very High{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
 

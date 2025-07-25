@@ -144,19 +144,20 @@ def send_payment_request_email(author_email, paper):
 
 class SubreviewerReviewForm(forms.Form):
     RATING_CHOICES = [
-        (5, 'Strong Accept (5)'),
-        (4, 'Accept (4)'),
-        (3, 'Weak Accept (3)'),
-        (2, 'Weak Reject (2)'),
-        (1, 'Reject (1)'),
-        (0, 'Strong Reject (0)'),
+        (3, 'Strong Accept (+3)'),
+        (2, 'Accept (+2)'),
+        (1, 'Weak Accept (+1)'),
+        (0, 'Borderline (0)'),
+        (-1, 'Weak Reject (-1)'),
+        (-2, 'Reject (-2)'),
+        (-3, 'Strong Reject (-3)'),
     ]
     CONFIDENCE_CHOICES = [
-        (5, 'Expert'),
-        (4, 'High'),
-        (3, 'Medium'),
+        (1, 'Very Low'),
         (2, 'Low'),
-        (1, 'None'),
+        (3, 'Medium'),
+        (4, 'High'),
+        (5, 'Very High'),
     ]
     rating = forms.ChoiceField(
         choices=RATING_CHOICES, 
@@ -574,13 +575,13 @@ def subreviewer_review_form(request, invite_id):
         if form.is_valid():
             # Determine recommendation based on rating (but don't set final decision)
             rating = int(form.cleaned_data['rating'])
-            if rating >= 3:  # Strong Accept, Accept, Weak Accept
+            if rating > 0:
                 recommendation = 'accept'
-            else:  # Weak Reject, Reject, Strong Reject
+            elif rating < 0:
                 recommendation = 'reject'
-            
+            else:
+                recommendation = 'borderline'
             # Create review with recommendation but no final decision
-            # The decision field will be null/empty until chair approves
             Review.objects.create(
                 paper=invite.paper,
                 reviewer=request.user,
@@ -602,6 +603,12 @@ def subreviewer_review_form(request, invite_id):
                 related_paper=invite.paper,
                 related_conference=invite.paper.conference
             )
+            # Send real email to chair
+            chair_email = invite.paper.conference.chair.email
+            if chair_email:
+                subject = f"New Subreviewer Review Submitted - {invite.paper.conference.name}"
+                body = f"Dear {invite.paper.conference.chair.get_full_name() or invite.paper.conference.chair.username},\n\nA new subreviewer review has been submitted for the paper '{invite.paper.title}' by {request.user.get_full_name() or request.user.username}.\n\nPlease log in to your dashboard to view the review.\n\nBest regards,\n{invite.paper.conference.name} System"
+                send_mail(subject, body, None, [chair_email])
             
             return redirect('conference:subreviewer_dashboard', conference_id=invite.paper.conference.id)
     else:
