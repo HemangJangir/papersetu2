@@ -88,20 +88,6 @@
       <div class="w-full md:w-1/2 flex flex-col justify-center items-center p-20 bg-white min-h-[740px]">
         <h2 class="text-4xl font-bold text-gray-900 mb-4">Create Account</h2>
         <div class="text-gray-400 text-lg mb-6">or use your email for registration</div>
-        {% if signup_form.errors or signup_form.non_field_errors %}
-          <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-            <ul class="list-disc pl-5">
-              {% for field in signup_form %}
-                {% for error in field.errors %}
-                  <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-                {% endfor %}
-              {% endfor %}
-              {% for error in signup_form.non_field_errors %}
-                <li>{{ error }}</li>
-              {% endfor %}
-            </ul>
-          </div>
-        {% endif %}
         <form method="post" action="/accounts/login/" class="w-full max-w-md space-y-6">
           {% csrf_token %}
           <input type="hidden" name="signup" value="1">
@@ -109,31 +95,49 @@
             <input type="text" name="first_name" id="id_first_name" required
               class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
               placeholder="First Name" value="{{ signup_form.first_name.value|default_if_none:'' }}">
+            {% if signup_form.first_name.errors %}
+              <div class="text-red-600 text-xs">{{ signup_form.first_name.errors }}</div>
+            {% endif %}
           </div>
           <div>
             <input type="text" name="last_name" id="id_last_name" required
               class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
               placeholder="Last Name" value="{{ signup_form.last_name.value|default_if_none:'' }}">
+            {% if signup_form.last_name.errors %}
+              <div class="text-red-600 text-xs">{{ signup_form.last_name.errors }}</div>
+            {% endif %}
           </div>
           <div>
             <input type="text" name="username" id="id_username_reg" required
               class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
               placeholder="Username" value="{{ signup_form.username.value|default_if_none:'' }}">
+            {% if signup_form.username.errors %}
+              <div class="text-red-600 text-xs">{{ signup_form.username.errors }}</div>
+            {% endif %}
           </div>
           <div>
             <input type="email" name="email" id="id_email" required
               class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
               placeholder="Email" value="{{ signup_form.email.value|default_if_none:'' }}">
+            {% if signup_form.email.errors %}
+              <div class="text-red-600 text-xs">{{ signup_form.email.errors }}</div>
+            {% endif %}
           </div>
           <div>
             <input type="password" name="password1" id="id_password1" required
               class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
               placeholder="Password">
+            {% if signup_form.password1.errors %}
+              <div class="text-red-600 text-xs">{{ signup_form.password1.errors }}</div>
+            {% endif %}
           </div>
           <div>
             <input type="password" name="password2" id="id_password2" required
               class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
               placeholder="Confirm Password">
+            {% if signup_form.password2.errors %}
+              <div class="text-red-600 text-xs">{{ signup_form.password2.errors }}</div>
+            {% endif %}
           </div>
           <button type="submit"
             class="w-full bg-indigo-800 text-white font-semibold py-3 rounded-lg shadow hover:bg-indigo-900 text-lg transition focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2">
