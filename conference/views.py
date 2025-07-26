@@ -688,9 +688,18 @@ def search_conferences(request):
             Q(city__icontains=query) |
             Q(country__icontains=query)
         )
+    # Use homepage logic for my_conferences
+    if request.user.is_authenticated:
+        my_conferences = Conference.objects.filter(
+            Q(chair=request.user) |
+            Q(userconferencerole__user=request.user, userconferencerole__role__in=['author', 'pc_member', 'subreviewer'])
+        ).distinct().filter(is_approved=True)
+    else:
+        my_conferences = []
     context = {
         'search_query': query,
         'search_results': conferences,
+        'my_conferences': my_conferences,
     }
     return render(request, 'conference/search_results.html', context) 
 

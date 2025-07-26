@@ -2418,6 +2418,7 @@ def send_to_authors(request, conf_id):
             'decision': paper.status.upper(),
             'author_name': paper.author.get_full_name() or paper.author.username,
             'author_email': paper.author.email,
+            'paper_id': paper.paper_id,
             'detail_url': reverse('dashboard:view_paper_submission', args=[conference.id, paper.id]),
         })
     # Handle POST: send email to selected authors
@@ -2431,11 +2432,11 @@ def send_to_authors(request, conf_id):
         # Get selected authors
         selected_authors = []
         if send_all:
-            selected_authors = [{'name': sub['author_name'], 'email': sub['author_email']} for sub in submissions]
+            selected_authors = [{'name': sub['author_name'], 'email': sub['author_email'], 'paper_id': sub['paper_id']} for sub in submissions]
         else:
             for sub in submissions:
                 if str(sub['id']) in selected_paper_ids:
-                    selected_authors.append({'name': sub['author_name'], 'email': sub['author_email']})
+                    selected_authors.append({'name': sub['author_name'], 'email': sub['author_email'], 'paper_id': sub['paper_id']})
         # Remove duplicates
         seen_emails = set()
         unique_authors = []
@@ -2447,7 +2448,7 @@ def send_to_authors(request, conf_id):
         attachment = request.FILES.get('attachment')
         # Send email to each author
         for author in unique_authors:
-            personalized_message = message.replace('{*NAME*}', author['name'])
+            personalized_message = message.replace('{*NAME*}', author['name']).replace('{*paperid*}', author['paper_id'])
             email_obj = EmailMessage(
                 subject=subject,
                 body=personalized_message,
@@ -2478,6 +2479,8 @@ def send_to_authors(request, conf_id):
             'show_popup': True,
             'popup_names': author_names,
         })
+    # For GET: set default message
+    default_message = "Dear author {*NAME*} of Paper {*paperid*},"
     return render(request, 'dashboard/send_to_authors.html', {
         'conf_id': conf_id,
         'conference': conference,
@@ -2485,6 +2488,7 @@ def send_to_authors(request, conf_id):
         'active_tab': active_tab,
         'review_dropdown_items': review_dropdown_items,
         'submissions': submissions,
+        'default_message': default_message,
     })
 
 @login_required

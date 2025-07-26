@@ -6,6 +6,7 @@ class ConferenceForm(forms.ModelForm):
     secondary_area = forms.ChoiceField(choices=AREA_CHOICES)
     start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    web_page = forms.URLField(required=True)
     paper_submission_deadline = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}), required=False)
     class Meta:
         model = Conference
@@ -14,7 +15,8 @@ class ConferenceForm(forms.ModelForm):
             'estimated_submissions', 'start_date', 'end_date',
             'primary_area', 'secondary_area', 'area_notes',
             'organizer', 'organizer_web_page', 'contact_phone',
-            'role', 'description', 'paper_submission_deadline', 'paper_format'
+            'role', 'description', 'paper_submission_deadline', 'paper_format',
+            'chair', 'chair_name', 'chair_email'
         ]
 
 class ReviewerVolunteerForm(forms.ModelForm):
