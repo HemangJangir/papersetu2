@@ -1,8 +1,28 @@
 {% extends 'homepage.html' %}
 {% block content %}
-    <!-- Conference Search Section (already included in homepage.html) -->
-    <!-- Only show results if not already rendered by homepage -->
-    {% if search_results is not None %}
+    <div>DEBUG: my_conferences count = {{ my_conferences|length }}</div>
+    <!-- My Conferences Section (homepage style) -->
+    {% if my_conferences %}
+    <div class="max-w-2xl mx-auto mb-10">
+        <h2 class="text-3xl font-extrabold text-blue-800 mb-2 tracking-tight">My Conferences</h2>
+        <p class="text-gray-600 mb-6">Manage your conference activities and submissions</p>
+        {% for conference in my_conferences %}
+        <div class="bg-white rounded-2xl shadow-xl p-8 border border-blue-100 flex flex-col justify-between relative mb-8">
+            <div>
+                <h3 class="text-2xl font-bold text-blue-900 mb-1">{{ conference.acronym|default:conference.name|truncatechars:20 }}</h3>
+                <p class="text-blue-500 text-base mb-1">{{ conference.name|truncatechars:40 }}</p>
+                <p class="text-blue-400 text-sm mb-2">{{ conference.description|truncatechars:60 }}</p>
+                <div class="flex items-center text-blue-600 text-base mb-1"><i class="fas fa-map-marker-alt mr-1"></i> <span class="font-semibold">{{ conference.venue|default:"TBD" }}</span>{% if conference.city %}, {{ conference.city }}{% endif %}</div>
+                <div class="flex items-center text-gray-600 text-base mb-1"><i class="fas fa-calendar mr-1"></i> {{ conference.start_date|date:"M d" }} - {{ conference.end_date|date:"M d, Y" }}</div>
+                <div class="flex items-center text-gray-600 text-base mb-1"><i class="fas fa-tag mr-1"></i> {{ conference.theme_domain|default:conference.get_primary_area_display }}</div>
+            </div>
+            <span class="absolute top-6 right-6 bg-yellow-100 text-yellow-800 px-4 py-1 rounded-full font-semibold text-base">{{ conference.status|title }}</span>
+            <a href="{% url 'conference:role_based_dashboard' conference.id %}" class="mt-8 w-full block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-full text-center text-lg transition">Go</a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if search_query %}
     <div class="glass card-animated-border rounded-xl shadow-lg p-6 border border-blue-100 mb-8">
         <div class="card-content">
             <h2 class="text-2xl font-bold text-blue-700 mb-4">Search Results</h2>

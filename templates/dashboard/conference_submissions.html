@@ -224,6 +224,7 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paper ID</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paper</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reviews</th>
@@ -236,6 +237,7 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         {% for paper in papers %}
                         <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-blue-700">{{ paper.paper_id }}</td>
                             <td class="px-6 py-4">
                                 <div class="max-w-xs">
                                     <div class="text-sm font-medium text-gray-900 line-clamp-2">{{ paper.title }}</div>

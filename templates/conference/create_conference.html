@@ -82,6 +82,150 @@
     </style>
 </head>
 <body class="min-h-screen py-8 px-4">
+<script>
+// Simple city-to-country mapping for demonstration
+const cityCountryMap = {
+    'new york': 'United States',
+    'los angeles': 'United States',
+    'london': 'United Kingdom',
+    'paris': 'France',
+    'berlin': 'Germany',
+    'tokyo': 'Japan',
+    'delhi': 'India',
+    'mumbai': 'India',
+    'beijing': 'China',
+    'shanghai': 'China',
+    'sydney': 'Australia',
+    'melbourne': 'Australia',
+    'toronto': 'Canada',
+    'vancouver': 'Canada',
+    'moscow': 'Russia',
+    'dubai': 'United Arab Emirates',
+    'singapore': 'Singapore',
+    'hong kong': 'China',
+    'san francisco': 'United States',
+    'boston': 'United States',
+    'chicago': 'United States',
+    'bengaluru': 'India',
+    'bangalore': 'India',
+    'seoul': 'South Korea',
+    'rome': 'Italy',
+    'madrid': 'Spain',
+    'amsterdam': 'Netherlands',
+    'zurich': 'Switzerland',
+    'vienna': 'Austria',
+    'stockholm': 'Sweden',
+    'helsinki': 'Finland',
+    'oslo': 'Norway',
+    'copenhagen': 'Denmark',
+    'brussels': 'Belgium',
+    'warsaw': 'Poland',
+    'prague': 'Czech Republic',
+    'budapest': 'Hungary',
+    'lisbon': 'Portugal',
+    'athens': 'Greece',
+    'istanbul': 'Turkey',
+    'cairo': 'Egypt',
+    'johannesburg': 'South Africa',
+    'nairobi': 'Kenya',
+    'lagos': 'Nigeria',
+    'mexico city': 'Mexico',
+    'sao paulo': 'Brazil',
+    'buenos aires': 'Argentina',
+    'santiago': 'Chile',
+    'bogota': 'Colombia',
+    'lima': 'Peru',
+    'caracas': 'Venezuela',
+    'jakarta': 'Indonesia',
+    'bangkok': 'Thailand',
+    'kuala lumpur': 'Malaysia',
+    'manila': 'Philippines',
+    'hanoi': 'Vietnam',
+    'riyadh': 'Saudi Arabia',
+    'tehran': 'Iran',
+    'baghdad': 'Iraq',
+    'islamabad': 'Pakistan',
+    'ankara': 'Turkey',
+    'doha': 'Qatar',
+    'auckland': 'New Zealand',
+    'cape town': 'South Africa',
+    'addis ababa': 'Ethiopia',
+    'cairo': 'Egypt',
+    'casablanca': 'Morocco',
+    'algiers': 'Algeria',
+    'tunis': 'Tunisia',
+    'tripoli': 'Libya',
+    'khartoum': 'Sudan',
+    'accra': 'Ghana',
+    'abidjan': 'Ivory Coast',
+    'dakar': 'Senegal',
+    'kampala': 'Uganda',
+    'dar es salaam': 'Tanzania',
+    'lusaka': 'Zambia',
+    'harare': 'Zimbabwe',
+    'maputo': 'Mozambique',
+    'windhoek': 'Namibia',
+    'gaborone': 'Botswana',
+    'antananarivo': 'Madagascar',
+    'yaounde': 'Cameroon',
+    'kinshasa': 'DR Congo',
+    'brazzaville': 'Congo',
+    'luanda': 'Angola',
+    'addis ababa': 'Ethiopia',
+    'mogadishu': 'Somalia',
+    'djibouti': 'Djibouti',
+    'asmara': 'Eritrea',
+    'juba': 'South Sudan',
+    'kigali': 'Rwanda',
+    'bujumbura': 'Burundi',
+    'lilongwe': 'Malawi',
+    'freetown': 'Sierra Leone',
+    'monrovia': 'Liberia',
+    'bamako': 'Mali',
+    'ouagadougou': 'Burkina Faso',
+    'niamey': 'Niger',
+    'lome': 'Togo',
+    'cotonou': 'Benin',
+    'porto-novo': 'Benin',
+    'libreville': 'Gabon',
+    'malabo': 'Equatorial Guinea',
+    'bissau': 'Guinea-Bissau',
+    'conakry': 'Guinea',
+    'nouakchott': 'Mauritania',
+    'rabat': 'Morocco',
+    'tbilisi': 'Georgia',
+    'yerevan': 'Armenia',
+    'baku': 'Azerbaijan',
+    'beirut': 'Lebanon',
+    'amman': 'Jordan',
+    'jerusalem': 'Israel',
+    'kuwait city': 'Kuwait',
+    'muscat': 'Oman',
+    'sanaa': 'Yemen',
+    'doha': 'Qatar',
+    'manama': 'Bahrain',
+    'abu dhabi': 'United Arab Emirates',
+    'dubai': 'United Arab Emirates',
+    'sharjah': 'United Arab Emirates',
+    'al ain': 'United Arab Emirates',
+    'ajman': 'United Arab Emirates',
+    'fujairah': 'United Arab Emirates',
+    'ras al khaimah': 'United Arab Emirates',
+    'umm al quwain': 'United Arab Emirates',
+};
+document.addEventListener('DOMContentLoaded', function() {
+    const cityInput = document.querySelector('input[name="city"]');
+    const countryInput = document.querySelector('input[name="country"]');
+    if (cityInput && countryInput) {
+        cityInput.addEventListener('blur', function() {
+            const city = cityInput.value.trim().toLowerCase();
+            if (cityCountryMap[city]) {
+                countryInput.value = cityCountryMap[city];
+            }
+        });
+    }
+});
+</script>
 <div class="max-w-4xl mx-auto">
     <div class="form-container p-8">
         <div class="text-center mb-8">
@@ -198,6 +342,16 @@
                         <label class="form-label">Your Role</label>
                         {{ form.role|add_class:'form-input'|attr:'placeholder:Your role (e.g., Chair)' }}
                         {{ form.role.errors }}
+                    </div>
+                    <div>
+                        <label class="form-label">Conference Chair Name</label>
+                        {{ form.chair_name|add_class:'form-input'|attr:'placeholder:Full name of the chair' }}
+                        {{ form.chair_name.errors }}
+                    </div>
+                    <div>
+                        <label class="form-label">Conference Chair Email</label>
+                        {{ form.chair_email|add_class:'form-input'|attr:'placeholder:Chair email address' }}
+                        {{ form.chair_email.errors }}
                     </div>
                 </div>
                 <div class="mt-6">

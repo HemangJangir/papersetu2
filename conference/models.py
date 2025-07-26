@@ -42,6 +42,8 @@ class Conference(models.Model):
     requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requested_conferences', null=True, blank=True)
     description = models.TextField(blank=True)
     chair = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chaired_conferences')
+    chair_name = models.CharField(max_length=255, blank=True, help_text="Conference chair's full name")
+    chair_email = models.EmailField(blank=True, help_text="Conference chair's email address")
     status = models.CharField(max_length=20, choices=[('upcoming', 'Upcoming'), ('live', 'Live'), ('completed', 'Completed')], default='upcoming')
     invite_link = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -151,14 +153,14 @@ class Paper(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.paper_id:
-            last_id = Paper.objects.all().order_by('-id').first()
-            next_num = 1
-            if last_id and last_id.paper_id and last_id.paper_id.startswith('PAPER'):
-                try:
-                    next_num = int(last_id.paper_id.replace('PAPER', '')) + 1
-                except Exception:
-                    pass
-            self.paper_id = f'PAPER{next_num:04d}'
+            acronym = (self.conference.acronym or 'CONF').upper()
+            year = self.conference.start_date.year if self.conference.start_date else 0
+            yy = str(year)[-2:] if year else 'XX'
+            serial = Paper.objects.filter(
+                conference=self.conference,
+                submitted_at__year=year
+            ).count() + 1
+            self.paper_id = f"{acronym}{yy}{serial:02d}"
         super().save(*args, **kwargs)
 
 class Review(models.Model):
