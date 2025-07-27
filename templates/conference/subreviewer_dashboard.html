@@ -38,6 +38,15 @@
             {% endif %}
         {% else %}
             <h2 class="text-lg font-semibold mb-4">Assigned Papers</h2>
+            <form method="get" class="mb-4 flex items-center gap-2">
+                <label for="track" class="font-semibold text-gray-700">Filter by Track:</label>
+                <select name="track" id="track" class="border rounded px-3 py-1" onchange="this.form.submit()">
+                    <option value="all" {% if track_filter == 'all' %}selected{% endif %}>All Tracks</option>
+                    {% for track in tracks %}
+                        <option value="{{ track.id }}" {% if track_filter == track.id|stringformat:'s' %}selected{% endif %}>{{ track.name }} ({{ track.track_id }})</option>
+                    {% endfor %}
+                </select>
+            </form>
             {% if assigned_papers %}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {% for item in assigned_papers %}
@@ -65,6 +74,8 @@
                                 </span>
                             </div>
                             <div class="mb-2 text-sm text-gray-600">Conference: {{ conference.name }}</div>
+                            <div class="mb-2 text-sm text-gray-600">Track ID: <span class="font-semibold">{{ item.paper.track.track_id|default:'-' }}</span></div>
+                            <div class="mb-2 text-sm text-gray-600">Track Name: <span class="font-semibold">{{ item.paper.track.name|default:'-' }}</span></div>
                             <div class="mb-2 text-sm text-gray-600">Plagiarism %: {% if item.plagiarism_percentage is not None %}<span class="font-semibold">{{ item.plagiarism_percentage }}%</span>{% else %}<span class="text-gray-400">-</span>{% endif %}</div>
                         </div>
                         <div class="flex items-center space-x-2 mt-2">

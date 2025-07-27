@@ -56,6 +56,7 @@ urlpatterns = [
     path('roles/', views.roles_overview, name='roles_overview'),
     path('my-conferences/', views.my_conferences, name='my_conferences'),
     path('create-conference/', views.CreateConferenceView.as_view(), name='create_conference'),
+    path('conference/<int:conf_id>/created/', views.conference_created, name='conference_created'),
     path('view-roles/', views.view_roles, name='view_roles'),
     path('publish-with-us/', views.publish_with_us, name='publish_with_us'),
     path('manage-cfp/', views.manage_cfp, name='manage_cfp'),

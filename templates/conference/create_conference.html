@@ -1,12 +1,14 @@
+{% load static %}
 {% load conference_extras %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Conference</title>
+    <title>Create Conference - PaperSetu</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body { 
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); 
@@ -69,6 +71,23 @@
             font-size: 0.75rem;
             margin-top: 0.25rem;
         }
+        .form-input.error {
+            border-color: #dc2626;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        }
+        .form-input.error:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .required-field {
+            color: #dc2626;
+        }
+        .error-message {
+            color: #dc2626;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            display: block;
+        }
         .section-divider {
             border-top: 1px solid #e5e7eb;
             margin: 2rem 0;
@@ -78,6 +97,25 @@
             font-weight: 600;
             font-size: 1.125rem;
             margin-bottom: 1.5rem;
+        }
+        .back-btn {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .back-btn:hover {
+            background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
         }
     </style>
 </head>
@@ -224,42 +262,124 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Clear error styling when user starts typing
+    const formInputs = document.querySelectorAll('.form-input');
+    formInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            if (this.classList.contains('error')) {
+                this.classList.remove('error');
+                // Remove error message if it exists
+                const errorMessage = this.parentNode.querySelector('.error-message');
+                if (errorMessage) {
+                    errorMessage.style.display = 'none';
+                }
+            }
+        });
+        
+        input.addEventListener('focus', function() {
+            if (this.classList.contains('error')) {
+                this.classList.remove('error');
+                // Remove error message if it exists
+                const errorMessage = this.parentNode.querySelector('.error-message');
+                if (errorMessage) {
+                    errorMessage.style.display = 'none';
+                }
+            }
+        });
+    });
+    
+    // Form submission handling
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating Conference...';
+            }
+        });
+    }
 });
 </script>
+
+<!-- Navigation Header -->
+<nav class="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-30 mb-8">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-4">
+            <img src="{% static 'images/LOGO BG.png' %}" alt="PaperSetu Logo" class="w-12 h-12 rounded-full shadow mr-2">
+            <span class="text-xl font-bold text-indigo-800 tracking-tight">PaperSetu</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <a href="/home/" class="back-btn">
+                <i class="fas fa-home"></i>
+                <span>Back to Home</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
 <div class="max-w-4xl mx-auto">
     <div class="form-container p-8">
         <div class="text-center mb-8">
-            <h1 class="form-title text-3xl mb-2">Create New Conference</h1>
+            <h1 class="form-title text-3xl mb-2 text-indigo-800">Create New Conference</h1>
             <p class="text-gray-600 text-sm">Fill in the details below to create your conference</p>
+            <p class="text-sm text-red-600 mt-2"><span class="required-field">*</span> Required fields</p>
         </div>
         
         <form method="post" class="space-y-6">
             {% csrf_token %}
-            {{ form.non_field_errors }}
+            
+            <!-- Global Error Messages -->
+            {% if form.non_field_errors %}
+            <div class="bg-red-50 border-l-4 border-red-400 rounded-lg p-6 mb-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-exclamation-circle text-red-400 text-xl"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-red-800 font-medium">Please correct the following errors:</h3>
+                        <ul class="text-red-700 mt-2 space-y-1">
+                            {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             
             <!-- Basic Information Section -->
             <div>
-                <h2 class="section-title">Basic Information</h2>
+                <h2 class="section-title text-indigo-700">Basic Information</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="form-label">Conference Title *</label>
+                        <label class="form-label">Conference Title <span class="required-field">*</span></label>
                         {{ form.name|add_class:'form-input'|attr:'placeholder:Enter conference title' }}
-                        {{ form.name.errors }}
+                        {% if form.name.errors %}
+                        <div class="error-message">{{ form.name.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
-                        <label class="form-label">Acronym *</label>
-                        {{ form.acronym|add_class:'form-input'|attr:'placeholder:Short acronym' }}
-                        {{ form.acronym.errors }}
+                        <label class="form-label">Acronym <span class="required-field">*</span></label>
+                        {{ form.acronym|add_class:'form-input'|attr:'placeholder:Short acronym (e.g., ICML, CVPR)' }}
+                        {% if form.acronym.errors %}
+                        <div class="error-message">{{ form.acronym.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
-                        <label class="form-label">Web Page</label>
+                        <label class="form-label">Web Page <span class="required-field">*</span></label>
                         {{ form.web_page|add_class:'form-input'|attr:'placeholder:https://yourconf.com' }}
-                        {{ form.web_page.errors }}
+                        {% if form.web_page.errors %}
+                        <div class="error-message">{{ form.web_page.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
-                        <label class="form-label">Description</label>
+                        <label class="form-label">Description <span class="required-field">*</span></label>
                         {{ form.description|add_class:'form-input'|attr:'placeholder:Describe your conference' }}
-                        {{ form.description.errors }}
+                        {% if form.description.errors %}
+                        <div class="error-message">{{ form.description.errors.0 }}</div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -268,22 +388,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
             <!-- Location Section -->
             <div>
-                <h2 class="section-title">Location & Venue</h2>
+                <h2 class="section-title text-indigo-700">Location & Venue</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                        <label class="form-label">Venue</label>
+                        <label class="form-label">Venue <span class="required-field">*</span></label>
                         {{ form.venue|add_class:'form-input'|attr:'placeholder:Venue name' }}
-                        {{ form.venue.errors }}
+                        {% if form.venue.errors %}
+                        <div class="error-message">{{ form.venue.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
-                        <label class="form-label">City</label>
+                        <label class="form-label">City <span class="required-field">*</span></label>
                         {{ form.city|add_class:'form-input'|attr:'placeholder:City' }}
-                        {{ form.city.errors }}
+                        {% if form.city.errors %}
+                        <div class="error-message">{{ form.city.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
-                        <label class="form-label">Country/Region</label>
+                        <label class="form-label">Country/Region <span class="required-field">*</span></label>
                         {{ form.country|add_class:'form-input'|attr:'placeholder:Country or Region' }}
-                        {{ form.country.errors }}
+                        {% if form.country.errors %}
+                        <div class="error-message">{{ form.country.errors.0 }}</div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -292,27 +418,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
             <!-- Dates Section -->
             <div>
-                <h2 class="section-title">Important Dates</h2>
+                <h2 class="section-title text-indigo-700">Important Dates</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="form-label">First Day</label>
+                        <label class="form-label">First Day <span class="required-field">*</span></label>
                         {{ form.start_date|add_class:'form-input'|attr:'placeholder:YYYY-MM-DD' }}
-                        {{ form.start_date.errors }}
+                        {% if form.start_date.errors %}
+                        <div class="error-message">{{ form.start_date.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
-                        <label class="form-label">Last Day</label>
+                        <label class="form-label">Last Day <span class="required-field">*</span></label>
                         {{ form.end_date|add_class:'form-input'|attr:'placeholder:YYYY-MM-DD' }}
-                        {{ form.end_date.errors }}
+                        {% if form.end_date.errors %}
+                        <div class="error-message">{{ form.end_date.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
-                        <label class="form-label">Paper Submission Deadline</label>
+                        <label class="form-label">Paper Submission Deadline <span class="required-field">*</span></label>
                         {{ form.paper_submission_deadline|add_class:'form-input'|attr:'placeholder:YYYY-MM-DD' }}
-                        {{ form.paper_submission_deadline.errors }}
+                        {% if form.paper_submission_deadline.errors %}
+                        <div class="error-message">{{ form.paper_submission_deadline.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
                         <label class="form-label">Estimated Submissions</label>
                         {{ form.estimated_submissions|add_class:'form-input'|attr:'placeholder:100' }}
-                        {{ form.estimated_submissions.errors }}
+                        {% if form.estimated_submissions.errors %}
+                        <div class="error-message">{{ form.estimated_submissions.errors.0 }}</div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -321,43 +455,57 @@ document.addEventListener('DOMContentLoaded', function() {
 
             <!-- Technical Details Section -->
             <div>
-                <h2 class="section-title">Technical Details</h2>
+                <h2 class="section-title text-indigo-700">Technical Details</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="form-label">Primary Area</label>
+                        <label class="form-label">Primary Area <span class="required-field">*</span></label>
                         {{ form.primary_area|add_class:'form-input' }}
-                        {{ form.primary_area.errors }}
+                        {% if form.primary_area.errors %}
+                        <div class="error-message">{{ form.primary_area.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
                         <label class="form-label">Secondary Area</label>
                         {{ form.secondary_area|add_class:'form-input' }}
-                        {{ form.secondary_area.errors }}
+                        {% if form.secondary_area.errors %}
+                        <div class="error-message">{{ form.secondary_area.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
-                        <label class="form-label">Paper Format</label>
-                        {{ form.paper_format|add_class:'form-input' }}
-                        {{ form.paper_format.errors }}
+                        <label class="form-label">Paper Format <span class="required-field">*</span></label>
+                        {{ form.paper_format|add_class:'form-input'|attr:'placeholder:e.g., PDF, 8 pages, double-column' }}
+                        {% if form.paper_format.errors %}
+                        <div class="error-message">{{ form.paper_format.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
                         <label class="form-label">Your Role</label>
-                        {{ form.role|add_class:'form-input'|attr:'placeholder:Your role (e.g., Chair)' }}
-                        {{ form.role.errors }}
+                        {{ form.role|add_class:'form-input'|attr:'placeholder:Your role (e.g., Chair, Organizer)' }}
+                        {% if form.role.errors %}
+                        <div class="error-message">{{ form.role.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
-                        <label class="form-label">Conference Chair Name</label>
-                        {{ form.chair_name|add_class:'form-input'|attr:'placeholder:Full name of the chair' }}
-                        {{ form.chair_name.errors }}
+                        <label class="form-label">Conference Chair Name <span class="required-field">*</span></label>
+                        {{ form.chair_name|add_class:'form-input'|attr:'placeholder:Full name of the conference chair' }}
+                        {% if form.chair_name.errors %}
+                        <div class="error-message">{{ form.chair_name.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
-                        <label class="form-label">Conference Chair Email</label>
+                        <label class="form-label">Conference Chair Email <span class="required-field">*</span></label>
                         {{ form.chair_email|add_class:'form-input'|attr:'placeholder:Chair email address' }}
-                        {{ form.chair_email.errors }}
+                        {% if form.chair_email.errors %}
+                        <div class="error-message">{{ form.chair_email.errors.0 }}</div>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="mt-6">
                     <label class="form-label">Area Notes</label>
-                    {{ form.area_notes|add_class:'form-input'|attr:'placeholder:Any notes about the area' }}
-                    {{ form.area_notes.errors }}
+                    {{ form.area_notes|add_class:'form-input'|attr:'placeholder:Any additional notes about the conference area' }}
+                    {% if form.area_notes.errors %}
+                    <div class="error-message">{{ form.area_notes.errors.0 }}</div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -365,29 +513,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
             <!-- Organizer Information Section -->
             <div>
-                <h2 class="section-title">Organizer Information</h2>
+                <h2 class="section-title text-indigo-700">Organizer Information</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="form-label">Organizer</label>
-                        {{ form.organizer|add_class:'form-input'|attr:'placeholder:Organizer name' }}
-                        {{ form.organizer.errors }}
+                        {{ form.organizer|add_class:'form-input'|attr:'placeholder:Organizer name or organization' }}
+                        {% if form.organizer.errors %}
+                        <div class="error-message">{{ form.organizer.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
                         <label class="form-label">Organizer Web Page</label>
                         {{ form.organizer_web_page|add_class:'form-input'|attr:'placeholder:https://organizer.com' }}
-                        {{ form.organizer_web_page.errors }}
+                        {% if form.organizer_web_page.errors %}
+                        <div class="error-message">{{ form.organizer_web_page.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div>
                         <label class="form-label">Contact Phone</label>
                         {{ form.contact_phone|add_class:'form-input'|attr:'placeholder:+1234567890' }}
-                        {{ form.contact_phone.errors }}
+                        {% if form.contact_phone.errors %}
+                        <div class="error-message">{{ form.contact_phone.errors.0 }}</div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
 
-            <div class="pt-8">
-                <button type="submit" class="submit-btn w-full md:w-auto px-8 py-3 text-lg">
-                    Create Conference
+            <div class="pt-8 text-center">
+                <button type="submit" id="submit-btn" class="submit-btn w-full md:w-auto px-8 py-3 text-lg">
+                    <i class="fas fa-plus mr-2"></i>Create Conference
                 </button>
             </div>
         </form>

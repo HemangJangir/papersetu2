@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from accounts.models import User
 from django.db.models.signals import post_save
@@ -110,6 +111,7 @@ class UserConferenceRole(models.Model):
         ('pc_member', 'PC Member'),
         ('subreviewer', 'Subreviewer'),
     ])
+    track = models.ForeignKey('Track', on_delete=models.SET_NULL, null=True, blank=True, related_name='user_roles')
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -117,6 +119,15 @@ class UserConferenceRole(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.role} @ {self.conference}"
+
+class Track(models.Model):
+    track_id = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=100)
+    conference = models.ForeignKey('Conference', on_delete=models.CASCADE, related_name='tracks')
+    chair = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='chaired_tracks')
+
+    def __str__(self):
+        return f"{self.name} ({self.track_id})"
 
 class Paper(models.Model):
     title = models.CharField(max_length=255)
@@ -126,6 +137,7 @@ class Paper(models.Model):
     conference = models.ForeignKey(Conference, on_delete=models.CASCADE, related_name='papers')
     submitted_at = models.DateTimeField(auto_now_add=True)
     paper_id = models.CharField(max_length=20, unique=True, blank=True, null=True, help_text="Unique Paper ID for search/reference")
+    track = models.ForeignKey(Track, on_delete=models.SET_NULL, null=True, blank=True, related_name='papers')
     
     STATUS_CHOICES = [
         ('submitted', 'Submitted'),
@@ -227,6 +239,7 @@ class PCInvite(models.Model):
     accepted_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     token = models.CharField(max_length=64, unique=True)
+    track = models.ForeignKey(Track, on_delete=models.SET_NULL, null=True, blank=True, related_name='pc_invites')
 
     def __str__(self):
         return f"{self.email} invited to {self.conference} ({self.status})"
@@ -402,6 +415,7 @@ class SubreviewerInvite(models.Model):
     requested_at = models.DateTimeField(auto_now_add=True)
     responded_at = models.DateTimeField(null=True, blank=True)
     token = models.CharField(max_length=64, unique=True)
+    track = models.ForeignKey(Track, on_delete=models.SET_NULL, null=True, blank=True, related_name='subreviewer_invites')
 
     def __str__(self):
         return f"{self.subreviewer} invited for {self.paper} ({self.status})"

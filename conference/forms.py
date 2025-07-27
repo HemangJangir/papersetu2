@@ -1,13 +1,29 @@
 from django import forms
-from .models import Conference, ReviewerPool, Paper, EmailTemplate, RegistrationApplication, AREA_CHOICES, Author
+from .models import Conference, ReviewerPool, Paper, EmailTemplate, RegistrationApplication, AREA_CHOICES, Author, Track
 
 class ConferenceForm(forms.ModelForm):
-    primary_area = forms.ChoiceField(choices=AREA_CHOICES)
-    secondary_area = forms.ChoiceField(choices=AREA_CHOICES)
-    start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
-    end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
-    web_page = forms.URLField(required=True)
-    paper_submission_deadline = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}), required=False)
+    primary_area = forms.ChoiceField(choices=AREA_CHOICES, required=True)
+    secondary_area = forms.ChoiceField(choices=AREA_CHOICES, required=False)
+    start_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        required=True,
+        help_text='First day of the conference'
+    )
+    end_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        required=True,
+        help_text='Last day of the conference'
+    )
+    web_page = forms.URLField(
+        required=True,
+        help_text='Conference website URL'
+    )
+    paper_submission_deadline = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        required=True,
+        help_text='Deadline for paper submissions'
+    )
+    
     class Meta:
         model = Conference
         fields = [
@@ -18,6 +34,84 @@ class ConferenceForm(forms.ModelForm):
             'role', 'description', 'paper_submission_deadline', 'paper_format',
             'chair', 'chair_name', 'chair_email'
         ]
+        widgets = {
+            'name': forms.TextInput(attrs={'placeholder': 'Enter conference title'}),
+            'acronym': forms.TextInput(attrs={'placeholder': 'Short acronym (e.g., ICML, CVPR)'}),
+            'description': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Describe your conference'}),
+            'venue': forms.TextInput(attrs={'placeholder': 'Venue name'}),
+            'city': forms.TextInput(attrs={'placeholder': 'City'}),
+            'country': forms.TextInput(attrs={'placeholder': 'Country or Region'}),
+            'paper_format': forms.TextInput(attrs={'placeholder': 'e.g., PDF, 8 pages, double-column'}),
+            'chair': forms.HiddenInput(),
+            'chair_name': forms.TextInput(attrs={'placeholder': 'Full name of the conference chair'}),
+            'chair_email': forms.EmailInput(attrs={'placeholder': 'Chair email address'}),
+            'organizer': forms.TextInput(attrs={'placeholder': 'Organizer name or organization'}),
+            'organizer_web_page': forms.URLInput(attrs={'placeholder': 'https://organizer.com'}),
+            'contact_phone': forms.TextInput(attrs={'placeholder': '+1234567890'}),
+            'role': forms.TextInput(attrs={'placeholder': 'Your role (e.g., Chair, Organizer)'}),
+            'area_notes': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Any additional notes about the conference area'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make required fields mandatory
+        required_fields = [
+            'name', 'acronym', 'description', 'venue', 'city', 'country',
+            'start_date', 'end_date', 'paper_submission_deadline',
+            'primary_area', 'paper_format', 'chair_name', 'chair_email'
+        ]
+        
+        for field_name in required_fields:
+            if field_name in self.fields:
+                self.fields[field_name].required = True
+                # Add asterisk to label
+                if hasattr(self.fields[field_name], 'label'):
+                    current_label = self.fields[field_name].label or field_name.replace('_', ' ').title()
+                    self.fields[field_name].label = f"{current_label} *"
+        
+        # Exclude chair field from form validation since we set it in the view
+        if 'chair' in self.fields:
+            self.fields['chair'].required = False
+            self.fields['chair'].widget = forms.HiddenInput()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        paper_submission_deadline = cleaned_data.get('paper_submission_deadline')
+        
+        # Validate dates
+        if start_date and end_date:
+            if start_date > end_date:
+                raise forms.ValidationError("First day cannot be after the last day.")
+        
+        if paper_submission_deadline and start_date:
+            if paper_submission_deadline > start_date:
+                raise forms.ValidationError("Paper submission deadline cannot be after the conference start date.")
+        
+        # Validate acronym (should be unique)
+        acronym = cleaned_data.get('acronym')
+        if acronym:
+            # Check if this is an update (instance exists) or new creation
+            if hasattr(self, 'instance') and self.instance.pk:
+                existing_conference = Conference.objects.filter(acronym__iexact=acronym).exclude(pk=self.instance.pk).first()
+            else:
+                existing_conference = Conference.objects.filter(acronym__iexact=acronym).first()
+            
+            if existing_conference:
+                raise forms.ValidationError(f"A conference with the acronym '{acronym}' already exists.")
+        
+        return cleaned_data
+
+    def clean_acronym(self):
+        acronym = self.cleaned_data.get('acronym')
+        if acronym:
+            # Remove spaces and convert to uppercase
+            acronym = acronym.strip().upper()
+            # Check if it's alphanumeric
+            if not acronym.replace('-', '').replace('_', '').isalnum():
+                raise forms.ValidationError("Acronym should contain only letters, numbers, hyphens, and underscores.")
+        return acronym
 
 class ReviewerVolunteerForm(forms.ModelForm):
     first_name = forms.CharField(max_length=30, required=True)
@@ -39,12 +133,24 @@ class AuthorForm(forms.ModelForm):
 
 class PaperSubmissionForm(forms.ModelForm):
     keywords = forms.CharField(required=True, help_text='Comma-separated keywords')
+    track = forms.ModelChoiceField(queryset=None, required=False, help_text='Select a track (if applicable)')
+
     class Meta:
         model = Paper
-        fields = ['title', 'abstract', 'file']
+        fields = ['title', 'abstract', 'file', 'track']
         widgets = {
             'abstract': forms.Textarea(attrs={'rows': 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        conference = kwargs.pop('conference', None)
+        super().__init__(*args, **kwargs)
+        if conference:
+            self.fields['track'].queryset = conference.tracks.all()
+            if not conference.tracks.exists():
+                self.fields['track'].widget = forms.HiddenInput()
+        else:
+            self.fields['track'].queryset = Track.objects.none()
 
 class ConferenceInfoForm(forms.ModelForm):
     """Form for basic conference information settings."""
