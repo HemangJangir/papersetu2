@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from conference.models import Conference, ReviewerPool, ReviewInvite, UserConferenceRole, Paper, Review, User, Notification, PCInvite, ConferenceAdminSettings, EmailTemplate, RegistrationApplication, SubreviewerInvite, Author
+from conference.models import Conference, ReviewerPool, ReviewInvite, UserConferenceRole, Paper, Review, User, Notification, PCInvite, ConferenceAdminSettings, EmailTemplate, RegistrationApplication, SubreviewerInvite, Author, Track
 from django.db.models import Count, Q
 from django.views.decorators.http import require_POST
 from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
@@ -388,15 +388,26 @@ def bulk_assign_papers(request):
 def pc_conference_detail(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
     user = request.user
-    # Check if user is a pc_member for this conference
-    is_pc_member = UserConferenceRole.objects.filter(user=user, conference=conference, role='pc_member').exists()
-    if not is_pc_member:
+    
+    # Check if user is a pc_member for this conference and get their track
+    user_role = UserConferenceRole.objects.filter(
+        user=user, 
+        conference=conference, 
+        role='pc_member'
+    ).first()
+    
+    if not user_role:
         return render(request, 'dashboard/forbidden.html', {'message': 'You are not a PC member for this conference.'})
-    # Get submissions and reviews for this conference
-    submissions = Paper.objects.filter(conference=conference).select_related('author')
+    
+    # Get submissions and reviews for this conference - filter by track if PC member has a track assigned
+    submissions = Paper.objects.filter(conference=conference).select_related('author', 'track')
+    if user_role.track:
+        submissions = submissions.filter(track=user_role.track)
+    
     for paper in submissions:
         paper.can_review = paper.reviews.filter(reviewer=user).exists()
         paper.review_id = paper.reviews.filter(reviewer=user).first().id if paper.can_review else None
+    
     reviews = Review.objects.filter(paper__conference=conference)
     nav_items = [
         {'label': 'Submissions', 'url': '#'},
@@ -411,6 +422,8 @@ def pc_conference_detail(request, conf_id):
         'submissions': submissions,
         'reviews': reviews,
         'nav_items': nav_items,
+        'user_track': user_role.track,
+        'is_pc_member': True,
     }
     return render(request, 'dashboard/pc_conference_detail.html', context)
 
@@ -419,8 +432,29 @@ def pc_list(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
     if not (conference.chair == request.user or UserConferenceRole.objects.filter(user=request.user, conference=conference, role='pc_member').exists()):
         return render(request, 'dashboard/forbidden.html', {'message': 'You do not have permission.'})
-    pc_members = UserConferenceRole.objects.filter(conference=conference, role='pc_member').select_related('user')
-    context = {'conference': conference, 'pc_members': pc_members}
+    
+    # Get all tracks for the conference
+    tracks = conference.tracks.all()
+    
+    # Get track filter from request
+    track_filter = request.GET.get('track', 'all')
+    
+    # Get PC members with track information
+    pc_members = UserConferenceRole.objects.filter(
+        conference=conference, 
+        role='pc_member'
+    ).select_related('user', 'track')
+    
+    # Apply track filter if specified
+    if track_filter != 'all':
+        pc_members = pc_members.filter(track_id=track_filter)
+    
+    context = {
+        'conference': conference, 
+        'pc_members': pc_members,
+        'tracks': tracks,
+        'selected_track': track_filter
+    }
     return render(request, 'dashboard/pc_list.html', context)
 
 @login_required
@@ -439,12 +473,19 @@ def pc_invite(request, conf_id):
     pc_member_emails = set(UserConferenceRole.objects.filter(conference=conference, role='pc_member').values_list('user__email', flat=True))
     all_users = User.objects.exclude(id=conference.chair_id).exclude(email__in=invited_emails | pc_member_emails)
     
+    tracks = conference.tracks.all()
     if request.method == 'POST':
         # Handle single invitation
         if 'name' in request.POST and 'email' in request.POST:
             name = request.POST.get('name').strip()
             email = request.POST.get('email').strip()
-            
+            track_id = request.POST.get('track')
+            track = None
+            if track_id:
+                try:
+                    track = tracks.get(id=track_id)
+                except Exception:
+                    track = None
             if not name or not email:
                 message = 'Name and email are required.'
                 message_type = 'error'
@@ -464,27 +505,15 @@ def pc_invite(request, conf_id):
                         name=name,
                         email=email,
                         invited_by=request.user,
-                        token=token
+                        token=token,
+                        track=track
                     )
-                    
                     # Send email
                     subject = f"PC Invitation for {conference.name}"
-                    body = f"""Dear {name},
-
-You have been invited to serve as a Program Committee (PC) member for the conference "{conference.name}".
-
-Please click the following link to accept or decline this invitation:
-{request.build_absolute_uri(reverse('dashboard:pc_invite_accept', args=[token]))}
-
-Best regards,
-{request.user.get_full_name() or request.user.username}
-Conference Chair"""
-                    
-                    # Use DEFAULT_FROM_EMAIL or fallback to EMAIL_HOST_USER
+                    track_info = f"\nTrack: {track.name} ({track.track_id})" if track else ""
+                    body = f"""Dear {name},\n\nYou have been invited to serve as a Program Committee (PC) member for the conference \"{conference.name}\".{track_info}\n\nPlease click the following link to accept or decline this invitation:\n{request.build_absolute_uri(reverse('dashboard:pc_invite_accept', args=[token]))}\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair"""
                     from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', settings.EMAIL_HOST_USER)
-                    
                     try:
-                        # Try using EmailMessage first
                         from django.core.mail import EmailMessage
                         email_msg = EmailMessage(
                             subject=subject,
@@ -495,7 +524,6 @@ Conference Chair"""
                         email_msg.send(fail_silently=False)
                         message = f'Invitation sent successfully to {name} ({email}).'
                         message_type = 'success'
-                        # Log the invitation email
                         PCEmailLog.objects.create(
                             subject=subject,
                             body=body,
@@ -507,42 +535,28 @@ Conference Chair"""
                     except Exception as e:
                         error_msg = str(e)
                         if 'SSL' in error_msg or 'CERTIFICATE' in error_msg:
-                            # Try alternative approach for SSL issues
                             try:
                                 import smtplib
                                 from email.mime.text import MIMEText
                                 from email.mime.multipart import MIMEMultipart
-                                
                                 msg = MIMEMultipart()
                                 msg['From'] = from_email
                                 msg['To'] = email
                                 msg['Subject'] = subject
                                 msg.attach(MIMEText(body, 'plain'))
-                                
                                 server = smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT)
                                 server.starttls()
                                 server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
                                 server.send_message(msg)
                                 server.quit()
-                                
                                 message = f'Invitation sent successfully to {name} ({email}).'
                                 message_type = 'success'
-                            except Exception as ssl_error:
-                                message = f'SSL Certificate error: {ssl_error}. Please check email configuration or use console backend for development.'
+                            except Exception as e2:
+                                message = f'Failed to send invitation: {str(e2)}'
                                 message_type = 'error'
-                                invite.delete()
-                        elif 'DEFAULT_FROM_EMAIL' in error_msg:
-                            message = f'Email configuration error: Please check DEFAULT_FROM_EMAIL setting.'
-                            message_type = 'error'
-                            invite.delete()
-                        elif 'SMTP' in error_msg or 'authentication' in error_msg.lower():
-                            message = f'Email server error: Please check email credentials and SMTP settings.'
-                            message_type = 'error'
-                            invite.delete()
                         else:
-                            message = f'Failed to send email to {email}: {error_msg}'
+                            message = f'Failed to send invitation: {error_msg}'
                             message_type = 'error'
-                            invite.delete()
         
         # Handle bulk invitations
         elif 'bulk_invite' in request.POST:
@@ -703,7 +717,8 @@ Conference Chair"""
         'message_type': message_type,
         'mail_preview': mail_preview, 
         'invites': invites, 
-        'all_users': all_users
+        'all_users': all_users,
+        'tracks': tracks,
     }
     return render(request, 'dashboard/pc_invite.html', context)
 
@@ -717,7 +732,16 @@ def pc_invite_accept(request, token):
             # Create user if not exists
             User = get_user_model()
             user, created = User.objects.get_or_create(email=invite.email, defaults={'username': invite.email.split('@')[0], 'first_name': invite.name})
-            UserConferenceRole.objects.get_or_create(user=user, conference=invite.conference, role='pc_member')
+            # Create or update user conference role with track information
+            user_role, created = UserConferenceRole.objects.get_or_create(
+                user=user, 
+                conference=invite.conference, 
+                role='pc_member'
+            )
+            # Always update track if invite has a track
+            if invite.track:
+                user_role.track = invite.track
+                user_role.save()
             invite.status = 'accepted'
             invite.accepted_at = timezone.now()
             invite.save()
@@ -764,11 +788,12 @@ def conference_submissions(request, conf_id):
     
     # Check if user has permission to view submissions (chair or PC member)
     is_chair = conference.chair == user
-    is_pc_member = UserConferenceRole.objects.filter(
+    user_role = UserConferenceRole.objects.filter(
         user=user, 
         conference=conference, 
         role='pc_member'
-    ).exists()
+    ).first()
+    is_pc_member = user_role is not None
     
     if not (is_chair or is_pc_member):
         return render(request, 'dashboard/forbidden.html', {
@@ -776,13 +801,37 @@ def conference_submissions(request, conf_id):
         })
     
     # Get all papers submitted to this conference
-    papers = Paper.objects.filter(conference=conference).select_related('author').order_by('-submitted_at')
+    papers = Paper.objects.filter(conference=conference).select_related('author', 'track').order_by('-submitted_at')
+    
+    # If PC member has a track assigned, filter papers by their track
+    # If PC member has no track assigned, they can see all papers
+    if is_pc_member and user_role.track:
+        papers = papers.filter(track=user_role.track)
     
     # Filter by status if requested
     status_filter = request.GET.get('status', 'all')
     if status_filter != 'all':
         papers = papers.filter(status=status_filter)
-    # Re-calculate review statistics for filtered papers
+    
+    # Filter by track if requested
+    tracks = conference.tracks.all()
+    track_filter = request.GET.get('track', 'all')
+    if track_filter != 'all':
+        papers = papers.filter(track_id=track_filter)
+    
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        papers = papers.filter(
+            Q(title__icontains=search_query) |
+            Q(author__first_name__icontains=search_query) |
+            Q(author__last_name__icontains=search_query) |
+            Q(author__username__icontains=search_query) |
+            Q(abstract__icontains=search_query) |
+            Q(paper_id__icontains=search_query)
+        )
+    
+    # Re-calculate review statistics for filtered papers (after all filters are applied)
     for paper in papers:
         reviews = paper.reviews.all()
         paper.total_reviews = reviews.count()
@@ -800,22 +849,10 @@ def conference_submissions(request, conf_id):
         ]
         paper.latest_subreviewer_recommendation = reviews.filter(recommendation__isnull=False, decision__isnull=True).order_by('-submitted_at').first()
     
-    # Search functionality
-    search_query = request.GET.get('search', '')
-    if search_query:
-        papers = papers.filter(
-            Q(title__icontains=search_query) |
-            Q(author__first_name__icontains=search_query) |
-            Q(author__last_name__icontains=search_query) |
-            Q(author__username__icontains=search_query) |
-            Q(abstract__icontains=search_query) |
-            Q(paper_id__icontains=search_query)
-        )
-    
     # Navigation items for the conference
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
-        "Email", "Administration", "Conference", "News", "papersetu"
+        "Email", "Administration", "Conference", "News", "papersetu", "Tracks"
     ]
     
     # Statistics
@@ -829,6 +866,7 @@ def conference_submissions(request, conf_id):
         'papers': papers,
         'is_chair': is_chair,
         'is_pc_member': is_pc_member,
+        'user_track': user_role.track if user_role else None,
         'nav_items': nav_items,
         'active_tab': 'Submissions',
         'status_filter': status_filter,
@@ -837,6 +875,8 @@ def conference_submissions(request, conf_id):
         'accepted_papers': accepted_papers,
         'rejected_papers': rejected_papers,
         'pending_papers': pending_papers,
+        'tracks': tracks,
+        'track_filter': track_filter,
     }
     
     return render(request, 'dashboard/conference_submissions.html', context)
@@ -886,7 +926,7 @@ def conference_details(request, conf_id):
     # Navigation items for the conference
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
-        "Email", "Administration", "Conference", "News", "papersetu"
+        "Email", "Administration", "Conference", "News", "papersetu", "Tracks"
     ]
     
     context = {
@@ -996,7 +1036,7 @@ def conference_administration(request, conf_id):
     # Navigation items for the conference
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
-        "Email", "Administration", "Conference", "News", "papersetu"
+        "Email", "Administration", "Conference", "News", "papersetu", "Tracks"
     ]
     
     context = {
@@ -1043,7 +1083,7 @@ def conference_configuration(request, conf_id):
     # Navigation items for the conference
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
-        "Email", "Administration", "Conference", "News", "papersetu"
+        "Email", "Administration", "Conference", "News", "papersetu", "Tracks"
     ]
 
     context = {
@@ -1707,8 +1747,17 @@ def all_submissions(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
     user = request.user
     
-    # Get all papers for this conference
-    papers = Paper.objects.filter(conference=conference).select_related('author').prefetch_related('reviews', 'subreviewer_invites')
+    # Check if user is PC member and get their track
+    user_role = UserConferenceRole.objects.filter(
+        user=user, 
+        conference=conference, 
+        role='pc_member'
+    ).first()
+    
+    # Get all papers for this conference - filter by track if PC member has a track assigned
+    papers = Paper.objects.filter(conference=conference).select_related('author', 'track').prefetch_related('reviews', 'subreviewer_invites')
+    if user_role and user_role.track:
+        papers = papers.filter(track=user_role.track)
     
     # Section 1: Submissions assigned to me and accepted by a subreviewer
     assigned_with_accepted_subreviewers = []
@@ -1766,6 +1815,7 @@ def all_submissions(request, conf_id):
         'assigned_with_accepted_subreviewers': assigned_with_accepted_subreviewers,
         'reviewed_by_me': reviewed_by_me,
         'user': user,
+        'user_track': user_role.track if user_role else None,
     })
 
 @login_required
@@ -1773,12 +1823,23 @@ def assigned_to_me(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
     user = request.user
     
-    # Get papers assigned to the current user for review
+    # Check if user is PC member and get their track
+    user_role = UserConferenceRole.objects.filter(
+        user=user, 
+        conference=conference, 
+        role='pc_member'
+    ).first()
+    
+    # Get papers assigned to the current user for review - filter by track if PC member
     assigned_papers = []
     user_reviews = Review.objects.filter(
         paper__conference=conference,
         reviewer=user
-    ).select_related('paper', 'paper__author').prefetch_related('paper__subreviewer_invites')
+    ).select_related('paper', 'paper__author', 'paper__track').prefetch_related('paper__subreviewer_invites')
+    
+    # Filter by track if PC member has a track assigned
+    if user_role and user_role.track:
+        user_reviews = user_reviews.filter(paper__track=user_role.track)
     
     for review in user_reviews:
         # Get subreviewer information for this paper
@@ -1810,6 +1871,10 @@ def assigned_to_me(request, conf_id):
         {'label': 'Send to authors', 'url': reverse('dashboard:send_to_authors', args=[conference.id])},
         {'label': 'Missing reviews', 'url': reverse('dashboard:missing_reviews', args=[conference.id])},
     ]
+    tracks = conference.tracks.all()
+    track_filter = request.GET.get('track', 'all')
+    if track_filter != 'all':
+        assigned_papers = [a for a in assigned_papers if a['paper'].track and str(a['paper'].track.id) == str(track_filter)]
     return render(request, 'dashboard/assigned_to_me.html', {
         'conf_id': conf_id,
         'conference': conference,
@@ -1819,6 +1884,9 @@ def assigned_to_me(request, conf_id):
         'assigned_papers': assigned_papers,
         'pending_count': pending_count,
         'completed_count': completed_count,
+        'tracks': tracks,
+        'track_filter': track_filter,
+        'user_track': user_role.track if user_role else None,
     })
 
 @login_required
@@ -1828,7 +1896,19 @@ def subreviewers(request, conf_id):
         return render(request, 'dashboard/forbidden.html', {'message': 'You do not have permission to manage subreviewers.'})
 
     search_query = request.GET.get('search', '').strip()
-    papers = Paper.objects.filter(conference=conference)
+    
+    # Check if user is PC member and get their track
+    user_role = UserConferenceRole.objects.filter(
+        user=request.user, 
+        conference=conference, 
+        role='pc_member'
+    ).first()
+    
+    # Get papers - filter by track if PC member has a track assigned
+    papers = Paper.objects.filter(conference=conference).select_related('track')
+    if user_role and user_role.track:
+        papers = papers.filter(track=user_role.track)
+    
     all_users = User.objects.exclude(id=conference.chair.id)
     if search_query:
         all_users = all_users.filter(username__icontains=search_query) | all_users.filter(email__icontains=search_query)
@@ -1843,6 +1923,20 @@ def subreviewers(request, conf_id):
             user_id = request.POST.get('user_id')
             email = request.POST.get('email')
             template_body = request.POST.get('template_body')
+            track_id = request.POST.get('track')
+            track = None
+            if track_id:
+                try:
+                    track = tracks.get(id=track_id)
+                except Exception:
+                    track = None
+            # If not specified, use the paper's track
+            if not track and paper_id:
+                try:
+                    paper = Paper.objects.get(id=paper_id)
+                    track = paper.track
+                except Exception:
+                    track = None
             if paper_id and user_id and email:
                 paper = Paper.objects.get(id=paper_id)
                 subreviewer = User.objects.get(id=user_id)
@@ -1857,10 +1951,12 @@ def subreviewers(request, conf_id):
                         subreviewer=subreviewer,
                         invited_by=request.user,
                         email=email,
-                        token=token
+                        token=token,
+                        track=track
                     )
                     UserConferenceRole.objects.get_or_create(user=subreviewer, conference=conference, role='subreviewer')
-                    body = f"Dear {subreviewer.get_full_name() or subreviewer.username},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'. Please log in to your dashboard to accept or reject the request.\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair/PC Member"
+                    track_info = f"\nTrack: {track.name} ({track.track_id})" if track else ""
+                    body = f"Dear {subreviewer.get_full_name() or subreviewer.username},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'.{track_info}\nPlease log in to your dashboard to accept or reject the request.\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair/PC Member"
                     send_mail(
                         subject=f"Paper Review Assignment: '{paper.title}'",
                         message=body,
@@ -1882,8 +1978,22 @@ def subreviewers(request, conf_id):
                 message_type = 'error'
         elif action == 'bulk_invite':
             paper_id = request.POST.get('paper_id')
+            track_id = request.POST.get('track')
             bulk_list = request.POST.get('bulk_invitation_list', '').strip().split('\n')
             paper = Paper.objects.get(id=paper_id)
+            
+            # Get track if specified
+            track = None
+            if track_id:
+                try:
+                    track = tracks.get(id=track_id)
+                except Exception:
+                    track = None
+            
+            # If not specified, use the paper's track
+            if not track and paper.track:
+                track = paper.track
+            
             success_count = 0
             error_count = 0
             error_messages = []
@@ -1915,11 +2025,13 @@ def subreviewers(request, conf_id):
                         subreviewer=subreviewer,
                         invited_by=request.user,
                         email=email,
-                        token=token
+                        token=token,
+                        track=track
                     )
                     UserConferenceRole.objects.get_or_create(user=subreviewer, conference=conference, role='subreviewer')
+                    track_info = f"\nTrack: {track.name} ({track.track_id})" if track else ""
                     subject = f"Paper Review Assignment: '{paper.title}'"
-                    message_body = f"Dear {name},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'. Please log in to your dashboard to accept or reject the request.\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair"
+                    message_body = f"Dear {name},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'.{track_info}\nPlease log in to your dashboard to accept or reject the request.\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair/PC Member"
                     send_mail(subject, message_body, None, [email])
                     success_count += 1
                 except Exception as e:
@@ -1986,6 +2098,9 @@ Conference Chair"""
         {'label': 'Send to authors', 'url': reverse('dashboard:send_to_authors', args=[conference.id])},
         {'label': 'Missing reviews', 'url': reverse('dashboard:missing_reviews', args=[conference.id])},
     ]
+    # Get tracks for the conference
+    tracks = conference.tracks.all()
+    
     context = {
         'conference': conference,
         'papers': papers,
@@ -2002,9 +2117,13 @@ Conference Chair"""
         'review_dropdown_items': review_dropdown_items,
         'invites': invites,  # Add the invites to context
         'message': message,  # Add the message to context
+        'tracks': tracks,  # Add tracks to context
+        'all_users': all_users,  # Add all_users to context
         'message_type': message_type,  # Add the message type to context
-        'all_users': all_users,  # Add all users for dropdown
         'default_template': default_template,  # Add default template
+        'tracks': tracks,
+        'user_track': user_role.track if user_role else None,
+        'is_pc_member': user_role is not None,
     }
     return render(request, 'dashboard/subreviewers.html', context)
 
@@ -2745,13 +2864,66 @@ class CreateConferenceView(LoginRequiredMixin, CreateView):
     model = Conference
     form_class = ConferenceForm
     template_name = 'conference/create_conference.html'
+    
     def get_success_url(self):
-        return reverse('dashboard:conference_submissions', args=[self.object.id])
+        return reverse('dashboard:conference_created', args=[self.object.id])
+    
+    def post(self, request, *args, **kwargs):
+        """
+        Handle POST requests: instantiate a form instance with the passed
+        POST variables and then check if it's valid.
+        """
+        form = self.get_form()
+        
+        # Set the chair field to the current user
+        if form.is_bound:
+            form.data = form.data.copy()
+            form.data['chair'] = request.user.id
+        
+        if form.is_valid():
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+    
     def form_valid(self, form):
-        conference = form.save(commit=False)
-        conference.chair = self.request.user
-        conference.save()
-        return super().form_valid(form)
+        try:
+            conference = form.save(commit=False)
+            conference.chair = self.request.user
+            conference.status = 'upcoming'  # Set status to upcoming (valid choice)
+            conference.save()
+            
+            # Create UserConferenceRole for the chair
+            from conference.models import UserConferenceRole
+            UserConferenceRole.objects.get_or_create(
+                user=self.request.user,
+                conference=conference,
+                role='chair'
+            )
+            
+            return super().form_valid(form)
+        except Exception as e:
+            # Log the error for debugging
+            print(f"Error creating conference: {e}")
+            form.add_error(None, f"An error occurred while creating the conference: {str(e)}")
+            return self.form_invalid(form)
+    
+    def form_invalid(self, form):
+        # Preserve existing classes and add error class
+        for field_name, errors in form.errors.items():
+            if field_name in form.fields:
+                field = form.fields[field_name]
+                current_class = field.widget.attrs.get('class', 'form-input')
+                if 'error' not in current_class:
+                    field.widget.attrs['class'] = f"{current_class} error"
+        return super().form_invalid(form)
+
+@login_required
+def conference_created(request, conf_id):
+    """Success page after conference creation"""
+    conference = get_object_or_404(Conference, id=conf_id, chair=request.user)
+    return render(request, 'dashboard/conference_created.html', {
+        'conference': conference
+    })
 
 @login_required
 def view_roles(request):
@@ -2799,18 +2971,32 @@ def read_terms(request):
 def pc_submissions(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
     user = request.user
-    # Only PC members can access
-    is_pc_member = UserConferenceRole.objects.filter(user=user, conference=conference, role='pc_member').exists()
-    if not is_pc_member:
+    
+    # Check if user is PC member and get their track
+    user_role = UserConferenceRole.objects.filter(
+        user=user, 
+        conference=conference, 
+        role='pc_member'
+    ).first()
+    
+    if not user_role:
         return render(request, 'dashboard/forbidden.html', {'message': 'You are not a PC member for this conference.'})
-    papers = Paper.objects.filter(conference=conference).select_related('author')
+    
+    # Get papers - filter by track if PC member has a track assigned
+    papers = Paper.objects.filter(conference=conference).select_related('author', 'track')
+    if user_role.track:
+        papers = papers.filter(track=user_role.track)
+    
     # For each paper, check if this PC member is assigned as a reviewer
     for paper in papers:
         paper.can_review = paper.reviews.filter(reviewer=user).exists()
         paper.review_id = paper.reviews.filter(reviewer=user).first().id if paper.can_review else None
+    
     context = {
         'conference': conference,
         'papers': papers,
+        'user_track': user_role.track,
+        'is_pc_member': True,
     }
     return render(request, 'dashboard/pc_submissions.html', context)
 
@@ -2818,12 +3004,20 @@ def pc_submissions(request, conf_id):
 def pc_subreviewers(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
     user = request.user
-    # Only PC members can access
-    is_pc_member = UserConferenceRole.objects.filter(user=user, conference=conference, role='pc_member').exists()
-    if not is_pc_member:
+    
+    # Check if user is PC member and get their track
+    user_role = UserConferenceRole.objects.filter(
+        user=user, 
+        conference=conference, 
+        role='pc_member'
+    ).first()
+    
+    if not user_role:
         return render(request, 'dashboard/forbidden.html', {'message': 'You are not a PC member for this conference.'})
+    
     message = None
     message_type = None
+    tracks = conference.tracks.all()
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'bulk_invite':
@@ -2881,6 +3075,20 @@ def pc_subreviewers(request, conf_id):
             paper_id = request.POST.get('paper_id')
             user_id = request.POST.get('user_id')
             email = request.POST.get('email')
+            track_id = request.POST.get('track')
+            track = None
+            if track_id:
+                try:
+                    track = tracks.get(id=track_id)
+                except Exception:
+                    track = None
+            # If not specified, use the paper's track
+            if not track and paper_id:
+                try:
+                    paper = Paper.objects.get(id=paper_id)
+                    track = paper.track
+                except Exception:
+                    track = None
             if paper_id and user_id and email:
                 paper = Paper.objects.get(id=paper_id)
                 subreviewer = User.objects.get(id=user_id)
@@ -2890,10 +3098,12 @@ def pc_subreviewers(request, conf_id):
                     subreviewer=subreviewer,
                     invited_by=user,
                     email=email,
-                    token=token
+                    token=token,
+                    track=track
                 )
                 UserConferenceRole.objects.get_or_create(user=subreviewer, conference=conference, role='subreviewer')
-                body = f"Dear {subreviewer.get_full_name() or subreviewer.username},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'. Please log in to your dashboard to accept or reject the request.\n\nBest regards,\n{user.get_full_name() or user.username}\nPC Member"
+                track_info = f"\nTrack: {track.name} ({track.track_id})" if track else ""
+                body = f"Dear {subreviewer.get_full_name() or subreviewer.username},\n\nYou have been assigned a paper for review (\"{paper.title}\") in the conference '{conference.name}'.{track_info}\nPlease log in to your dashboard to accept or reject the request.\n\nBest regards,\n{user.get_full_name() or user.username}\nPC Member"
                 send_mail(
                     subject=f"Paper Review Assignment: '{paper.title}'",
                     message=body,
@@ -2906,8 +3116,13 @@ def pc_subreviewers(request, conf_id):
                 message = "Please select a paper, subreviewer, and provide an email."
                 message_type = 'error'
     # Only show invites sent by this PC member
-    invites = SubreviewerInvite.objects.filter(paper__conference=conference, invited_by=user).select_related('paper', 'subreviewer')
-    papers = Paper.objects.filter(conference=conference)
+    invites = SubreviewerInvite.objects.filter(paper__conference=conference, invited_by=user).select_related('paper', 'subreviewer', 'track')
+    
+    # Get papers - filter by track if PC member has a track assigned
+    papers = Paper.objects.filter(conference=conference).select_related('track')
+    if user_role.track:
+        papers = papers.filter(track=user_role.track)
+    
     all_users = User.objects.exclude(id=conference.chair.id)
     context = {
         'conference': conference,
@@ -2916,6 +3131,9 @@ def pc_subreviewers(request, conf_id):
         'invites': invites,
         'message': message,
         'message_type': message_type,
+        'tracks': tracks,
+        'user_track': user_role.track,
+        'is_pc_member': True,
     }
     return render(request, 'dashboard/pc_subreviewers.html', context)
 
@@ -3276,7 +3494,7 @@ def view_paper_submission(request, conf_id, submission_id):
     # Navigation items for the conference
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
-        "Email", "Administration", "Conference", "News", "papersetu"
+        "Email", "Administration", "Conference", "News", "papersetu", "Tracks"
     ]
     
     context = {
@@ -3764,6 +3982,117 @@ class DemoFeatureView(AdminFeatureBaseView):
 class TracksFeatureView(AdminFeatureBaseView):
     feature_key = 'tracks'
     template_name = 'dashboard/admin_features/tracks.html'
+    
+    def get(self, request, conf_id):
+        conference = get_object_or_404(Conference, id=conf_id)
+        
+        # Ensure only the chair can access tracks management
+        if conference.chair != request.user:
+            return render(request, 'dashboard/forbidden.html', {
+                'message': 'Only the conference chair can manage tracks.'
+            })
+        
+        # Get all tracks for this conference
+        tracks = conference.tracks.all()
+        
+        # Get PC members for track chair assignment
+        pc_members = UserConferenceRole.objects.filter(
+            conference=conference, 
+            role='pc_member'
+        ).select_related('user')
+        
+        # Navigation items for the conference
+        nav_items = [
+            "Submissions", "Reviews", "Status", "PC", "Events",
+            "Email", "Administration", "Conference", "News", "papersetu", "Tracks"
+        ]
+        
+        context = {
+            'conference': conference,
+            'tracks': tracks,
+            'pc_members': pc_members,
+            'nav_items': nav_items,
+            'active_tab': 'Tracks',
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def post(self, request, conf_id):
+        conference = get_object_or_404(Conference, id=conf_id)
+        
+        # Ensure only the chair can access tracks management
+        if conference.chair != request.user:
+            return render(request, 'dashboard/forbidden.html', {
+                'message': 'Only the conference chair can manage tracks.'
+            })
+        
+        action = request.POST.get('action')
+        
+        if action == 'add_track':
+            track_id = request.POST.get('track_id', '').strip()
+            track_name = request.POST.get('track_name', '').strip()
+            chair_id = request.POST.get('chair', '').strip()
+            
+            if not track_id or not track_name:
+                messages.error(request, 'Track ID and Track Name are required.')
+                return redirect('dashboard:admin_tracks', conf_id=conf_id)
+            
+            # Check if track_id already exists
+            if Track.objects.filter(track_id=track_id).exists():
+                messages.error(request, f'A track with ID "{track_id}" already exists.')
+                return redirect('dashboard:admin_tracks', conf_id=conf_id)
+            
+            # Create new track
+            track = Track.objects.create(
+                track_id=track_id,
+                name=track_name,
+                conference=conference,
+                chair_id=chair_id if chair_id else None
+            )
+            
+            messages.success(request, f'Track "{track_name}" ({track_id}) created successfully.')
+            
+        elif action == 'edit_track':
+            track_id_hidden = request.POST.get('track_id_hidden')
+            track_id = request.POST.get('edit_track_id', '').strip()
+            track_name = request.POST.get('edit_track_name', '').strip()
+            chair_id = request.POST.get('edit_chair', '').strip()
+            
+            if not track_id or not track_name:
+                messages.error(request, 'Track ID and Track Name are required.')
+                return redirect('dashboard:admin_tracks', conf_id=conf_id)
+            
+            try:
+                track = Track.objects.get(id=track_id_hidden, conference=conference)
+                
+                # Check if new track_id conflicts with existing tracks (excluding current track)
+                if Track.objects.filter(track_id=track_id).exclude(id=track_id_hidden).exists():
+                    messages.error(request, f'A track with ID "{track_id}" already exists.')
+                    return redirect('dashboard:admin_tracks', conf_id=conf_id)
+                
+                track.track_id = track_id
+                track.name = track_name
+                track.chair_id = chair_id if chair_id else None
+                track.save()
+                
+                messages.success(request, f'Track "{track_name}" ({track_id}) updated successfully.')
+                
+            except Track.DoesNotExist:
+                messages.error(request, 'Track not found.')
+                
+        elif action == 'delete_track':
+            delete_track_id = request.POST.get('delete_track_id')
+            
+            try:
+                track = Track.objects.get(id=delete_track_id, conference=conference)
+                track_name = track.name
+                track.delete()
+                messages.success(request, f'Track "{track_name}" deleted successfully.')
+                
+            except Track.DoesNotExist:
+                messages.error(request, 'Track not found.')
+        
+        return redirect('dashboard:admin_tracks', conf_id=conf_id)
 
 class CFPFeatureView(AdminFeatureBaseView):
     feature_key = 'cfp'

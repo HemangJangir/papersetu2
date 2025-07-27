@@ -1,0 +1,104 @@
+{% extends 'dashboard/dashboard.html' %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-lg p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">
+            Paper Submissions
+            {% if user_track %}
+                <span class="text-sm text-blue-600">- Filtered by your track: {{ user_track.name }} ({{ user_track.track_id }})</span>
+            {% elif is_pc_member %}
+                <span class="text-sm text-green-600">- You can view all papers (no track assigned)</span>
+            {% endif %}
+        </h1>
+    </div>
+
+    {% if papers %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-200 rounded-lg">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paper</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Track</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for paper in papers %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ paper.title }}</div>
+                            {% if paper.abstract %}
+                                <div class="text-sm text-gray-500 truncate max-w-xs">{{ paper.abstract|truncatewords:20 }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ paper.author.get_full_name|default:paper.author.username }}</div>
+                            <div class="text-sm text-gray-500">{{ paper.author.email }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if paper.track %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {{ paper.track.name }} ({{ paper.track.track_id }})
+                                </span>
+                            {% else %}
+                                <span class="text-gray-500 text-sm">No track</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if paper.status == 'submitted' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Submitted
+                                </span>
+                            {% elif paper.status == 'accepted' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Accepted
+                                </span>
+                            {% elif paper.status == 'rejected' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    Rejected
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    {{ paper.status|title }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ paper.submitted_at|date:"M d, Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex space-x-2">
+                                <a href="{% url 'dashboard:view_paper_submission' conference.id paper.id %}" 
+                                   class="text-blue-600 hover:text-blue-900">View</a>
+                                {% if paper.can_review %}
+                                    <a href="{% url 'dashboard:review_paper' paper.review_id %}" 
+                                       class="text-green-600 hover:text-green-900">Review</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-6 text-sm text-gray-600">
+            <p>Total papers: {{ papers|length }}</p>
+        </div>
+    {% else %}
+        <div class="text-center py-12">
+            <div class="text-gray-500">
+                {% if user_track %}
+                    No papers found for your assigned track: {{ user_track.name }} ({{ user_track.track_id }})
+                {% else %}
+                    No papers found for this conference.
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

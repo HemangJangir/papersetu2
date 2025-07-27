@@ -63,6 +63,7 @@
                 <h3 class="text-xl font-bold text-gray-900 mb-4">Your Review Decision</h3>
                 <p class="text-gray-600 mb-6">Please carefully review the paper and provide your decision. This decision will be shared with the author and conference chair.</p>
                 
+                <button type="button" onclick="window.history.back()" class="mb-4 w-max px-4 py-2 bg-gray-100 hover:bg-blue-100 text-blue-700 rounded flex items-center gap-2"><i class="fas fa-arrow-left"></i> Back</button>
                 <form method="post" id="reviewForm">
                     {% csrf_token %}
                     <div class="space-y-4">

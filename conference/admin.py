@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Conference, ReviewerPool, ReviewInvite, UserConferenceRole, Paper, Review
+from .models import Conference, ReviewerPool, ReviewInvite, UserConferenceRole, Paper, Review, Track
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils.html import format_html
@@ -73,4 +73,5 @@ admin.site.register(ReviewerPool)
 admin.site.register(ReviewInvite)
 admin.site.register(UserConferenceRole)
 admin.site.register(Paper)
-admin.site.register(Review) 
+admin.site.register(Review)
+admin.site.register(Track) 

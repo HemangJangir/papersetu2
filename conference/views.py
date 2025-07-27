@@ -249,7 +249,7 @@ def reviewer_volunteer(request):
 def submit_paper(request, conference_id):
     conference = get_object_or_404(Conference, id=conference_id)
     if request.method == 'POST':
-        form = PaperSubmissionForm(request.POST, request.FILES)
+        form = PaperSubmissionForm(request.POST, request.FILES, conference=conference)
         if form.is_valid():
             paper = form.save(commit=False)
             paper.author = request.user
@@ -264,7 +264,7 @@ def submit_paper(request, conference_id):
             messages.success(request, 'Paper submitted successfully!')
             return redirect('dashboard:dashboard')
     else:
-        form = PaperSubmissionForm()
+        form = PaperSubmissionForm(conference=conference)
     return render(request, 'conference/submit_paper.html', {'form': form, 'conference': conference})
 
 @login_required
@@ -417,7 +417,7 @@ def author_dashboard(request, conference_id):
     )
     message = ''
     if request.method == 'POST':
-        paper_form = PaperSubmissionForm(request.POST, request.FILES)
+        paper_form = PaperSubmissionForm(request.POST, request.FILES, conference=conference)
         authors_data = request.POST.getlist('authors_json')
         import json
         authors = json.loads(authors_data[0]) if authors_data else []
@@ -459,7 +459,7 @@ def author_dashboard(request, conference_id):
         else:
             message = 'Please fill all required fields and add at least one author.'
     else:
-        paper_form = PaperSubmissionForm()
+        paper_form = PaperSubmissionForm(conference=conference)
     context = {
         'conference': conference,
         'papers': papers,
@@ -528,12 +528,18 @@ def subreviewer_dashboard(request, conference_id):
             conf_dict[ur.conference.id]['roles'].append(ur.role)
         conferences_with_roles = list(conf_dict.values())
 
+    tracks = conference.tracks.all()
+    track_filter = request.GET.get('track', 'all')
+    if track_filter != 'all':
+        assigned_papers = [a for a in assigned_papers if a['paper'].track and str(a['paper'].track.id) == str(track_filter)]
     context = {
         'conference': conference,
         'assigned_papers': assigned_papers,
         'nav_tabs': nav_tabs,
         'active_tab': active_tab,
         'conferences_with_roles': conferences_with_roles,
+        'tracks': tracks,
+        'track_filter': track_filter,
     }
     return render(request, 'conference/subreviewer_dashboard.html', context)
 

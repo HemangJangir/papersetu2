@@ -73,6 +73,8 @@
                             <a href="{% url 'dashboard:news_placeholder' conference.id %}" class="block px-4 py-2 rounded transition-all duration-150 {% if active_tab == item %}bg-blue-600 text-white shadow{% else %}bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-700{% endif %}">News</a>
                         {% elif item == 'papersetu' %}
                             <a href="{% url 'dashboard:papersetu_placeholder' conference.id %}" class="block px-4 py-2 rounded transition-all duration-150 {% if active_tab == item %}bg-blue-600 text-white shadow{% else %}bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-700{% endif %}">papersetu</a>
+                        {% elif item == 'Tracks' %}
+                            <a href="{% url 'dashboard:admin_tracks' conference.id %}" class="block px-4 py-2 rounded transition-all duration-150 {% if active_tab == item %}bg-blue-600 text-white shadow{% else %}bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-700{% endif %}">Tracks</a>
                         {% endif %}
                     </li>
                 {% endfor %}
@@ -217,14 +219,47 @@
                     {% if search_query %}
                         <span class="text-sm text-gray-500">- Results for "{{ search_query }}"</span>
                     {% endif %}
+                    {% if user_track %}
+                        <span class="text-sm text-blue-600">- Filtered by your track: {{ user_track.name }} ({{ user_track.track_id }})</span>
+                    {% elif is_pc_member %}
+                        <span class="text-sm text-green-600">- You can view all papers (no track assigned)</span>
+                    {% endif %}
                 </h2>
             </div>
             
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <form method="get" class="flex items-center gap-4">
+                    <label for="track" class="font-semibold text-gray-700">Filter by Track:</label>
+                    {% if user_track %}
+                        <select name="track" id="track" class="border rounded px-3 py-1 bg-gray-100" disabled>
+                            <option value="{{ user_track.id }}" selected>{{ user_track.name }} ({{ user_track.track_id }})</option>
+                        </select>
+                        <span class="text-sm text-gray-600">(You can only view papers from your assigned track)</span>
+                    {% elif is_pc_member %}
+                        <select name="track" id="track" class="border rounded px-3 py-1" onchange="this.form.submit()">
+                            <option value="all" {% if track_filter == 'all' %}selected{% endif %}>All Tracks</option>
+                            {% for track in tracks %}
+                                <option value="{{ track.id }}" {% if track_filter == track.id|stringformat:'s' %}selected{% endif %}>{{ track.name }} ({{ track.track_id }})</option>
+                            {% endfor %}
+                        </select>
+                        <span class="text-sm text-green-600">(You can view and filter all papers)</span>
+                    {% else %}
+                        <select name="track" id="track" class="border rounded px-3 py-1" onchange="this.form.submit()">
+                            <option value="all" {% if track_filter == 'all' %}selected{% endif %}>All Tracks</option>
+                            {% for track in tracks %}
+                                <option value="{{ track.id }}" {% if track_filter == track.id|stringformat:'s' %}selected{% endif %}>{{ track.name }} ({{ track.track_id }})</option>
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+                </form>
+            </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paper ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Track ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Track Name</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paper</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reviews</th>
@@ -238,6 +273,8 @@
                         {% for paper in papers %}
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-blue-700">{{ paper.paper_id }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">{{ paper.track.track_id|default:'-' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">{{ paper.track.name|default:'-' }}</td>
                             <td class="px-6 py-4">
                                 <div class="max-w-xs">
                                     <div class="text-sm font-medium text-gray-900 line-clamp-2">{{ paper.title }}</div>
@@ -323,7 +360,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                            <td colspan="11" class="px-6 py-8 text-center text-gray-500">
                                 <div class="flex flex-col items-center">
                                     <i class="fas fa-file-alt text-gray-300 text-4xl mb-4"></i>
                                     <p class="text-lg font-medium">No papers found</p>
