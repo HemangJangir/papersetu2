@@ -42,63 +42,86 @@
         </h2>
         <p class="text-sm text-gray-600 mt-1">Configure conference settings and parameters</p>
     </div>
-    
-    <!-- Conference Information Section -->
-    <div class="border-b border-gray-200">
-        <div class="px-6 py-4 bg-gray-50 flex items-center justify-between">
-            <h3 class="text-lg font-medium text-gray-900 flex items-center">
-                            <i class="fas fa-info-circle text-blue-600 mr-2"></i>
-                            Conference Information
-            </h3>
-            {% if not edit_section == 'info' %}
-                <a href="?edit=info" class="px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm flex items-center"><i class="fas fa-edit mr-1"></i> Edit</a>
-            {% endif %}
-                    </div>
-        <div class="px-6 py-4">
-            {% if edit_section == 'info' %}
-                <form method="post" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {% csrf_token %}
-                        <input type="hidden" name="section" value="conference_info">
-                            {% for field in forms.conference_info %}
-                        <div>
-                            <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ field.label }}</label>
-                                    {{ field }}
-                            {% if field.help_text %}<p class="text-xs text-gray-500">{{ field.help_text }}</p>{% endif %}
-                            {% if field.errors %}<p class="text-xs text-red-600">{{ field.errors.0 }}</p>{% endif %}
-                                </div>
-                            {% endfor %}
-                    <div class="md:col-span-2 flex justify-end mt-2 space-x-2">
-                        <a href="." class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</a>
-                        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Save Changes</button>
-                        </div>
-                    </form>
-                                    {% else %}
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><span class="font-semibold">Conference Name:</span> {{ conference.name }}</div>
-                    <div><span class="font-semibold">Acronym:</span> {{ conference.acronym|default:"Not set" }}</div>
-                    <div><span class="font-semibold">Web Page:</span> <a href="{{ conference.web_page }}" class="text-blue-600 underline" target="_blank">{{ conference.web_page }}</a></div>
-                    <div><span class="font-semibold">Venue:</span> {{ conference.venue|default:"Not set" }}</div>
-                    <div><span class="font-semibold">City:</span> {{ conference.city|default:"Not set" }}</div>
-                    <div><span class="font-semibold">Country/Region:</span> {{ conference.country|default:"Not set" }}</div>
-                    <div><span class="font-semibold">Estimated Submissions:</span> {{ conference.estimated_submissions|default:"Not set" }}</div>
-                    <div><span class="font-semibold">First Day:</span> {{ conference.start_date }}</div>
-                    <div><span class="font-semibold">Last Day:</span> {{ conference.end_date }}</div>
-                    <div><span class="font-semibold">Primary Area:</span> {{ conference.get_primary_area_display }}</div>
-                    <div><span class="font-semibold">Secondary Area:</span> {{ conference.get_secondary_area_display }}</div>
-                    <div><span class="font-semibold">Area Notes:</span> {{ conference.area_notes|default:"Not set" }}</div>
-                    <div><span class="font-semibold">Organizer:</span> {{ conference.organizer|default:"Not set" }}</div>
-                    <div><span class="font-semibold">Organizer Web Page:</span> <a href="{{ conference.organizer_web_page }}" class="text-blue-600 underline" target="_blank">{{ conference.organizer_web_page }}</a></div>
-                    <div><span class="font-semibold">Contact Phone:</span> {{ conference.contact_phone|default:"Not set" }}</div>
-                    <div><span class="font-semibold">Contact Email:</span> {{ conference.contact_email|default:"Not set" }}</div>
-                    <div><span class="font-semibold">Registration Fee:</span> ₹{{ conference.registration_fee|default:"Not set" }}</div>
-                    <div><span class="font-semibold">Theme/Domain:</span> {{ conference.theme_domain|default:"Not set" }}</div>
-                    <div><span class="font-semibold">Description:</span> {{ conference.description|default:"Not set" }}</div>
-                    <div><span class="font-semibold">Paper Submission Deadline:</span> {{ conference.paper_submission_deadline|default:"Not set" }}</div>
-                    <div><span class="font-semibold">Paper Format:</span> {{ conference.paper_format|upper|default:"Not set" }}</div>
-                </div>
-                                                    {% endif %}
-                                                </div>
-                                        </div>
-    <!-- Other sections (Submission Settings, Reviewing Settings, etc.) would follow here -->
-            </section>
+    <div class="px-6 py-4">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead>
+                <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Field</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
+                    <th class="px-4 py-2"></th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for field in conference_fields %}
+                <tr id="row-{{ field.name }}">
+                    <td class="px-4 py-2 font-semibold">{{ field.verbose_name|capfirst }}</td>
+                    <td class="px-4 py-2" id="value-{{ field.name }}">
+                        <span id="display-{{ field.name }}">{{ conference|attr:field.name }}</span>
+                        <form method="post" class="flex items-center gap-2 inline-edit-form" data-field="{{ field.name }}" id="form-{{ field.name }}" style="display:none;">
+                            {% csrf_token %}
+                            <input type="hidden" name="edit_field" value="{{ field.name }}">
+                            <input type="text" name="new_value" value="{{ conference|attr:field.name }}" class="border rounded px-2 py-1">
+                            <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">Save</button>
+                            <button type="button" class="bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 cancel-btn">Cancel</button>
+                        </form>
+                        <div class="text-xs text-red-600 mt-1" id="error-{{ field.name }}"></div>
+                    </td>
+                    <td class="px-4 py-2">
+                        <button class="text-blue-600 hover:underline edit-btn" data-field="{{ field.name }}"><i class="fas fa-edit mr-1"></i>Edit</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+<script>
+document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const field = btn.getAttribute('data-field');
+        document.getElementById('display-' + field).style.display = 'none';
+        document.getElementById('form-' + field).style.display = '';
+        btn.style.display = 'none';
+    });
+});
+document.querySelectorAll('.cancel-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const form = btn.closest('form');
+        const field = form.getAttribute('data-field');
+        form.style.display = 'none';
+        document.getElementById('display-' + field).style.display = '';
+        document.querySelector(`button.edit-btn[data-field='${field}']`).style.display = '';
+        document.getElementById('error-' + field).textContent = '';
+    });
+});
+document.querySelectorAll('.inline-edit-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const field = form.getAttribute('data-field');
+        const formData = new FormData(form);
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('display-' + field).textContent = data.value;
+                document.getElementById('display-' + field).style.display = '';
+                form.style.display = 'none';
+                document.querySelector(`button.edit-btn[data-field='${field}']`).style.display = '';
+                document.getElementById('error-' + field).textContent = '';
+            } else {
+                document.getElementById('error-' + field).textContent = data.error || 'Error saving.';
+            }
+        })
+        .catch(() => {
+            document.getElementById('error-' + field).textContent = 'Error saving.';
+        });
+    });
+});
+</script>
 {% endblock %}

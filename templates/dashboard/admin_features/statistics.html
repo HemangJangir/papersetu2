@@ -5,17 +5,101 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ feature_name }} - Administration</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-10 mt-16 mb-12">
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl p-10 mt-16 mb-12">
         <h1 class="text-3xl font-extrabold text-blue-700 mb-8 flex items-center gap-3">
-            <i class="fas fa-chart-bar"></i> {{ feature_name }}
+            <i class="fas fa-chart-bar"></i> Conference Statistics
         </h1>
-        {% if not feature_enabled %}
-            <div class="bg-red-100 text-red-700 px-4 py-3 rounded mb-6">{{ disabled_message }}</div>
-        {% else %}
-            <div class="bg-green-50 text-green-800 px-4 py-3 rounded mb-6">This is the <b>{{ feature_name }}</b> feature for <b>{{ conference.name }}</b>. You can customize this section as needed.</div>
-        {% endif %}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 flex flex-col justify-between shadow">
+                <h2 class="text-lg font-bold text-blue-800 mb-2">Total Reviewers</h2>
+                <div class="text-3xl font-extrabold text-blue-900">{{ total_reviewers }}</div>
+            </div>
+            <div class="bg-green-50 border border-green-200 rounded-lg p-6 flex flex-col justify-between shadow">
+                <h2 class="text-lg font-bold text-green-800 mb-2">Total Reviews</h2>
+                <div class="text-3xl font-extrabold text-green-900">{{ total_reviews }}</div>
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 flex flex-col justify-between shadow">
+                <h2 class="text-lg font-bold text-yellow-800 mb-2">Avg. Reviews per Paper</h2>
+                <div class="text-3xl font-extrabold text-yellow-900">{{ avg_reviews_per_paper }}</div>
+            </div>
+        </div>
+        <div class="mb-10 grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Paper Status Distribution</h2>
+                <canvas id="paperStatusChart" width="400" height="300"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Reviewer Completion Rates</h2>
+                <canvas id="reviewerBarChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+        <div class="mb-10">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Reviewer Statistics</h2>
+            <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg shadow">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reviewer</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Assigned</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Completed</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Completion Rate</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for reviewer in reviewer_stats %}
+                    <tr>
+                        <td class="px-4 py-2">{{ reviewer.name }}</td>
+                        <td class="px-4 py-2">{{ reviewer.total_assigned }}</td>
+                        <td class="px-4 py-2">{{ reviewer.completed }}</td>
+                        <td class="px-4 py-2">{{ reviewer.completion_rate }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </body>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Pie chart for paper status
+    const paperStatusCtx = document.getElementById('paperStatusChart').getContext('2d');
+    new Chart(paperStatusCtx, {
+        type: 'pie',
+        data: {
+            labels: ['Accepted', 'Rejected', 'Pending'],
+            datasets: [{
+                data: [{{ accepted_papers }}, {{ rejected_papers }}, {{ pending_papers }}],
+                backgroundColor: ['#22c55e', '#ef4444', '#facc15'],
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+    // Bar chart for reviewer completion rates
+    const reviewerBarCtx = document.getElementById('reviewerBarChart').getContext('2d');
+    new Chart(reviewerBarCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for reviewer in reviewer_stats %}'{{ reviewer.name }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Completion Rate (%)',
+                data: [{% for reviewer in reviewer_stats %}{{ reviewer.completion_rate }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: '#3b82f6',
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true, max: 100 }
+            }
+        }
+    });
+});
+</script>
 </html> 

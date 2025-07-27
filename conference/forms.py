@@ -247,10 +247,13 @@ class RegistrationApplicationStepOneForm(forms.ModelForm):
         widget=forms.DateInput(attrs={'type': 'date'}),
         help_text="When should registration open for attendees?"
     )
-    
+    contact_email = forms.EmailField(
+        required=True,
+        help_text="Main contact email for registration queries."
+    )
     class Meta:
         model = RegistrationApplication
-        fields = ['organizer', 'country_region', 'registration_start_date']
+        fields = ['organizer', 'country_region', 'registration_start_date', 'contact_email']
         widgets = {
             'organizer': forms.TextInput(attrs={
                 'placeholder': 'Enter organizer name or organization',
@@ -264,10 +267,19 @@ class RegistrationApplicationStepOneForm(forms.ModelForm):
 
 class RegistrationApplicationStepTwoForm(forms.ModelForm):
     """Second step of registration application - attendance and details"""
-    
+    registration_type = forms.ChoiceField(
+        choices=RegistrationApplication.REG_TYPE_CHOICES,
+        required=True,
+        help_text="Select the type of registration (e.g., Regular, Student, Invited)."
+    )
+    payment_method = forms.ChoiceField(
+        choices=RegistrationApplication.PAYMENT_METHOD_CHOICES,
+        required=True,
+        help_text="Preferred payment method for registration."
+    )
     class Meta:
         model = RegistrationApplication
-        fields = ['estimated_attendees', 'notes']
+        fields = ['estimated_attendees', 'registration_type', 'payment_method', 'notes']
         widgets = {
             'estimated_attendees': forms.NumberInput(attrs={
                 'min': 1,
