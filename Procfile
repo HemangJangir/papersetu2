@@ -1,0 +1,1 @@
+web: gunicorn conference_mgmt.wsgi:application 
