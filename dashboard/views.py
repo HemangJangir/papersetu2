@@ -520,7 +520,7 @@ def pc_invite(request, conf_id):
                     # Send email
                     subject = f"PC Invitation for {conference.name}"
                     track_info = f"\nTrack: {track.name} ({track.track_id})" if track else ""
-                    body = f"""Dear {name},\n\nYou have been invited to serve as a Program Committee (PC) member for the conference \"{conference.name}\".{track_info}\n\nPlease click the following link to accept or decline this invitation:\n{request.build_absolute_uri(reverse('dashboard:pc_invite_accept', args=[token]))}\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair"""
+                    body = f"""Dear {name},\n\nYou have been invited to serve as a Program Committee (PC) member for the conference \"{conference.name}\".{track_info}\n\nPlease click the following link to accept or decline this invitation:\n{settings.SITE_DOMAIN}{reverse('dashboard:pc_invite_accept', args=[token])}\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair"""
                     from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', settings.EMAIL_HOST_USER)
                     try:
                         from django.core.mail import EmailMessage
@@ -618,7 +618,7 @@ def pc_invite(request, conf_id):
 You have been invited to serve as a Program Committee (PC) member for the conference "{conference.name}".
 
 Please click the following link to accept or decline this invitation:
-{request.build_absolute_uri(reverse('dashboard:pc_invite_accept', args=[token]))}
+{settings.SITE_DOMAIN}{reverse('dashboard:pc_invite_accept', args=[token])}
 
 Best regards,
 {request.user.get_full_name() or request.user.username}

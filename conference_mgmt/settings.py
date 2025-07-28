@@ -155,3 +155,5 @@ STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_...')
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', 'pk_test_...')
 STRIPE_PAYMENT_AMOUNT = 50000  # Amount in paise (₹500 = 50000 paise)
 STRIPE_CURRENCY = 'inr' 
+
+SITE_DOMAIN = os.environ.get('SITE_DOMAIN', 'https://papersetu2.onrender.com') 

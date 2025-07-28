@@ -1,0 +1,71 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Start Guide - PaperSetu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen flex flex-col">
+    <nav class="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-30">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <img src="{% static 'images/LOGO BG.png' %}" alt="PaperSetu Logo" class="w-12 h-12 rounded-full shadow mr-2">
+                <span class="text-2xl font-bold text-indigo-800 tracking-tight">PaperSetu</span>
+            </div>
+            <div class="flex items-center space-x-8">
+                <a href="/home/" class="text-gray-700 hover:text-blue-600 font-semibold">Home</a>
+                <a href="/conference/" class="text-gray-700 hover:text-blue-600 font-semibold">Conferences</a>
+                <a href="/dashboard/" class="text-gray-700 hover:text-blue-600 font-semibold">Dashboard</a>
+                <a href="/accounts/logout/" class="text-red-600 hover:text-red-700 font-semibold">Logout</a>
+            </div>
+        </div>
+    </nav>
+    <main class="flex-grow max-w-3xl mx-auto px-4 py-10 text-[0.97rem] md:text-base">
+        <div class="bg-white rounded-2xl shadow-xl p-8 md:p-10 border border-blue-100">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800 mb-3 text-center">Quick Start Guide</h1>
+            <p class="text-base md:text-lg text-gray-600 mb-4 text-center">Welcome to <span class="font-semibold text-blue-700">PaperSetu</span>! PaperSetu is your unified platform for academic conference management, submissions, peer review, and collaboration. Whether you are a conference chair, PC member, author, or reviewer, PaperSetu streamlines the entire workflow for you.</p>
+            <p class="text-sm md:text-base text-gray-500 mb-8 text-center">From registration to paper submission, review, and final decisions, PaperSetu provides a seamless experience for all users. Join or create conferences, manage roles, submit and review papers, and stay updated with conference news—all in one place.</p>
+            <ol class="space-y-7 md:space-y-8">
+                <li>
+                    <h2 class="text-xl md:text-2xl font-bold text-indigo-700 mb-1 flex items-center"><i class="fas fa-user-plus mr-2"></i> 1. Register & Login</h2>
+                    <p class="text-gray-700">Create your account using your email address. After registration, verify your email with the OTP sent to you. You can log in using either your username or email and your password.</p>
+                    <p class="text-gray-500 text-sm mt-1">Registration is quick and secure—your academic journey starts here!</p>
+                </li>
+                <li>
+                    <h2 class="text-xl md:text-2xl font-bold text-indigo-700 mb-1 flex items-center"><i class="fas fa-sign-in-alt mr-2"></i> 2. Explore Conferences</h2>
+                    <p class="text-gray-700">Browse available conferences on the <a href="/conference/" class="text-blue-600 underline">Conferences</a> page. Use the search bar to find conferences by theme, venue, city, country, title, or acronym.</p>
+                    <p class="text-gray-500 text-sm mt-1">Discover events that match your research interests and expertise.</p>
+                </li>
+                <li>
+                    <h2 class="text-xl md:text-2xl font-bold text-indigo-700 mb-1 flex items-center"><i class="fas fa-plus-circle mr-2"></i> 3. Join or Create a Conference</h2>
+                    <p class="text-gray-700">You can join an existing conference or create your own as a chair. As a chair, you can invite PC members and manage the conference workflow, including tracks and reviewer assignments.</p>
+                    <p class="text-gray-500 text-sm mt-1">Take part as an attendee or lead your own event with powerful management tools.</p>
+                </li>
+                <li>
+                    <h2 class="text-xl md:text-2xl font-bold text-indigo-700 mb-1 flex items-center"><i class="fas fa-file-upload mr-2"></i> 4. Submit Papers</h2>
+                    <p class="text-gray-700">Authors can submit papers to conferences they have joined. Follow the submission guidelines and upload your paper in PDF format. You can also track the status of your submissions.</p>
+                    <p class="text-gray-500 text-sm mt-1">Easily manage your submissions and stay informed about review progress.</p>
+                </li>
+                <li>
+                    <h2 class="text-xl md:text-2xl font-bold text-indigo-700 mb-1 flex items-center"><i class="fas fa-users-cog mr-2"></i> 5. Review & Volunteer</h2>
+                    <p class="text-gray-700">PC members and subreviewers can review submitted papers. You may be invited to review papers or volunteer as a reviewer for conferences. All reviews are managed within the platform for transparency and efficiency.</p>
+                    <p class="text-gray-500 text-sm mt-1">Help maintain academic quality and contribute to the research community.</p>
+                </li>
+                <li>
+                    <h2 class="text-xl md:text-2xl font-bold text-indigo-700 mb-1 flex items-center"><i class="fas fa-tachometer-alt mr-2"></i> 6. Use the Dashboard</h2>
+                    <p class="text-gray-700">Track your submissions, reviews, invitations, and conference roles from your dashboard. Stay updated with conference news, deadlines, and manage your academic activities efficiently.</p>
+                    <p class="text-gray-500 text-sm mt-1">Your dashboard is your personal hub for all conference activities and updates.</p>
+                </li>
+                <li>
+                    <h2 class="text-xl md:text-2xl font-bold text-indigo-700 mb-1 flex items-center"><i class="fas fa-question-circle mr-2"></i> 7. Need Help?</h2>
+                    <p class="text-gray-700">If you have any questions, suggestions, or need support, please check the FAQs or contact us at <a href="mailto:papersetu@gmail.com" class="text-blue-600 underline">papersetu@gmail.com</a>. We are here to help you!</p>
+                    <p class="text-gray-500 text-sm mt-1">Our team is dedicated to supporting you at every step—reach out anytime!</p>
+                </li>
+            </ol>
+        </div>
+    </main>
+</body>
+</html> 

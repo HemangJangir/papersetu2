@@ -70,6 +70,7 @@ urlpatterns = [
     path('dashboard/', include('dashboard.urls', namespace='dashboard')),
     path('login/', lambda request: redirect('/accounts/login/', permanent=True)),
     path('news/', lambda request: render(request, 'news.html'), name='news'),
+    path('quick-start/', TemplateView.as_view(template_name='quick_start_guide.html'), name='quick_start'),
     path('', root_redirect, name='landing'),
     path('home/', homepage, name='homepage'),
 ]

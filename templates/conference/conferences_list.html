@@ -46,7 +46,7 @@
                 <p class="text-gray-600">Discover and explore academic conferences in your field</p>
             </div>
             <form id="conference-search-form" class="flex flex-col md:flex-row items-center gap-4 justify-start relative">
-                <div class="relative w-full md:w-96">
+                <div class="relative w-full">
                     <input type="text" id="search-input" name="q" value="{{ search_query|default:'' }}" placeholder="Search conferences by theme, venue, city, country, title, or acronym..." class="w-full px-4 py-2 rounded-lg border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400 pr-10" />
                     <button type="button" id="clear-search-btn" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500 focus:outline-none" style="display: none;">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
