@@ -39,10 +39,36 @@ class UserRegistrationForm(UserCreationForm):
         return email
 
 class PasswordResetEmailForm(forms.Form):
-    email = forms.EmailField(label='Email', required=True)
+    email = forms.EmailField(
+        label='Email', 
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'class': 'w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400',
+            'placeholder': 'Enter your email address',
+        })
+    )
 
 class PasswordResetOTPForm(forms.Form):
-    otp = forms.CharField(label='OTP', max_length=6, required=True)
+    otp = forms.CharField(
+        label='OTP', 
+        max_length=6, 
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400',
+            'placeholder': 'Enter 6-digit OTP',
+            'pattern': '[0-9]{6}',
+            'maxlength': '6',
+        })
+    )
 
 class SetNewPasswordForm(SetPasswordForm):
-    pass 
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(user, *args, **kwargs)
+        self.fields['new_password1'].widget.attrs.update({
+            'class': 'w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400',
+            'placeholder': 'Enter new password',
+        })
+        self.fields['new_password2'].widget.attrs.update({
+            'class': 'w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400',
+            'placeholder': 'Confirm new password',
+        }) 

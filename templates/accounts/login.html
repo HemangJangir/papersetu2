@@ -47,7 +47,7 @@
           </div>
         {% endif %}
         <div class="flex justify-between items-center mb-4">
-          <a href="/accounts/password_reset/" class="text-sm text-indigo-700 hover:underline">Forgot Your Password?</a>
+          <a href="{% url 'accounts:password_reset_request' %}" class="text-sm text-indigo-700 hover:underline">Forgot Your Password?</a>
         </div>
         <button type="submit"
           class="w-full bg-indigo-800 text-white font-semibold py-3 rounded-lg shadow hover:bg-indigo-900 text-lg transition focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2">

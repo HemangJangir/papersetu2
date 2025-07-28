@@ -86,17 +86,42 @@ def password_reset_request(request):
                 user.otp = otp
                 user.otp_created_at = timezone.now()
                 user.save()
-                send_mail(
-                    'Your OTP for Password Reset',
-                    f'Your OTP is: {otp}',
-                    'noreply@conference.com',
-                    [user.email],
-                    fail_silently=False,
-                )
-                request.session['reset_user_id'] = user.id
-                return redirect('accounts:password_reset_otp')
+                
+                # Send email with better formatting
+                subject = 'Password Reset OTP - PaperSetu'
+                message = f'''
+Hello {user.get_full_name() or user.username},
+
+You have requested to reset your password for your PaperSetu account.
+
+Your OTP (One-Time Password) is: {otp}
+
+This OTP is valid for 10 minutes. If you did not request this password reset, please ignore this email.
+
+Best regards,
+PaperSetu Team
+                '''
+                
+                try:
+                    send_mail(
+                        subject,
+                        message,
+                        'papersetu@gmail.com',
+                        [user.email],
+                        fail_silently=False,
+                    )
+                    request.session['reset_user_id'] = user.id
+                    messages.success(request, f'OTP has been sent to {email}. Please check your email.')
+                    return redirect('accounts:password_reset_otp')
+                except Exception as e:
+                    messages.error(request, 'Failed to send OTP. Please try again later.')
+                    # Clear the OTP if email fails
+                    user.otp = ''
+                    user.otp_created_at = None
+                    user.save()
+                    
             except ObjectDoesNotExist:
-                messages.error(request, 'No user found with that email.')
+                messages.error(request, 'No user found with that email address.')
     else:
         form = PasswordResetEmailForm()
     return render(request, 'accounts/password_reset_email.html', {'form': form})
@@ -104,8 +129,15 @@ def password_reset_request(request):
 def password_reset_otp(request):
     user_id = request.session.get('reset_user_id')
     if not user_id:
+        messages.error(request, 'Please request a password reset first.')
         return redirect('accounts:password_reset_request')
-    user = User.objects.get(id=user_id)
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except ObjectDoesNotExist:
+        messages.error(request, 'Invalid reset session. Please try again.')
+        return redirect('accounts:password_reset_request')
+    
     if request.method == 'POST':
         form = PasswordResetOTPForm(request.POST)
         if form.is_valid():
@@ -113,9 +145,13 @@ def password_reset_otp(request):
             # OTP valid for 10 minutes
             if user.otp == otp_input and user.otp_created_at and (timezone.now() - user.otp_created_at).total_seconds() < 600:
                 request.session['otp_verified'] = True
+                messages.success(request, 'OTP verified successfully. Please set your new password.')
                 return redirect('accounts:password_reset_new')
             else:
-                messages.error(request, 'Invalid or expired OTP.')
+                if not user.otp or user.otp != otp_input:
+                    messages.error(request, 'Invalid OTP. Please check and try again.')
+                else:
+                    messages.error(request, 'OTP has expired. Please request a new one.')
     else:
         form = PasswordResetOTPForm()
     return render(request, 'accounts/password_reset_otp.html', {'form': form})
@@ -124,8 +160,15 @@ def password_reset_new(request):
     user_id = request.session.get('reset_user_id')
     otp_verified = request.session.get('otp_verified')
     if not user_id or not otp_verified:
+        messages.error(request, 'Please complete the OTP verification first.')
         return redirect('accounts:password_reset_request')
-    user = User.objects.get(id=user_id)
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except ObjectDoesNotExist:
+        messages.error(request, 'Invalid reset session. Please try again.')
+        return redirect('accounts:password_reset_request')
+    
     if request.method == 'POST':
         form = SetNewPasswordForm(user, request.POST)
         if form.is_valid():
@@ -136,7 +179,7 @@ def password_reset_new(request):
             # Clear session
             request.session.pop('reset_user_id', None)
             request.session.pop('otp_verified', None)
-            messages.success(request, 'Password reset successful. You can now log in.')
+            messages.success(request, 'Password reset successful! You can now log in with your new password.')
             return redirect('accounts:login')
     else:
         form = SetNewPasswordForm(user)
