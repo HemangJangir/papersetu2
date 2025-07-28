@@ -17,6 +17,8 @@ else:
     ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'papersetu2.onrender.com', '*.onrender.com']
 
 INSTALLED_APPS = [
+    'admin_interface',
+    'colorfield',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -106,6 +108,14 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 if not DEBUG:
     MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    # Ensure admin static files are served
+    WHITENOISE_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    WHITENOISE_INDEX_FILE = True
+
+# Admin site configuration
+ADMIN_SITE_HEADER = "PaperSetu Admin"
+ADMIN_SITE_TITLE = "PaperSetu Administration"
+ADMIN_INDEX_TITLE = "Welcome to PaperSetu Administration"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

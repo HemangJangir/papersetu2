@@ -5,16 +5,42 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 class ConferenceAdmin(admin.ModelAdmin):
-    list_display = ('name', 'chair', 'is_approved', 'approve_conference')
-    list_filter = ('is_approved',)
-    actions = ['approve_selected_conferences']
+    list_display = ('name', 'acronym', 'chair', 'is_approved', 'status', 'start_date', 'end_date', 'approve_conference')
+    list_filter = ('is_approved', 'status', 'primary_area', 'start_date')
+    search_fields = ('name', 'acronym', 'chair__username', 'chair__email', 'theme_domain')
+    list_per_page = 25
+    date_hierarchy = 'start_date'
+    readonly_fields = ('created_at',)
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'acronym', 'description', 'theme_domain')
+        }),
+        ('Dates & Venue', {
+            'fields': ('start_date', 'end_date', 'venue', 'city', 'country')
+        }),
+        ('Organization', {
+            'fields': ('chair', 'chair_name', 'chair_email', 'organizer', 'organizer_web_page')
+        }),
+        ('Settings', {
+            'fields': ('is_approved', 'status', 'primary_area', 'secondary_area', 'area_notes')
+        }),
+        ('Submission Settings', {
+            'fields': ('paper_submission_deadline', 'paper_format', 'abstract_required', 'max_paper_length')
+        }),
+        ('Contact Information', {
+            'fields': ('contact_email', 'contact_phone', 'web_page')
+        }),
+    )
 
     def approve_conference(self, obj):
         if not obj.is_approved:
             return format_html('<a class="button" href="/admin/conference/conference/{}/approve/">Approve</a>', obj.id)
-        return 'Approved'
+        return format_html('<span style="color: green;">✓ Approved</span>')
     approve_conference.short_description = 'Approve Conference'
     approve_conference.allow_tags = True
+
+    actions = ['approve_selected_conferences']
 
     def get_urls(self):
         from django.urls import path

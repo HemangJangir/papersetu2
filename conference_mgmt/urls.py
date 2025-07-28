@@ -7,6 +7,11 @@ from django.views.generic import TemplateView
 from django.contrib.auth.decorators import login_required
 from conference.models import Conference, UserConferenceRole, SubreviewerInvite
 
+# Customize admin site
+admin.site.site_header = settings.ADMIN_SITE_HEADER
+admin.site.site_title = settings.ADMIN_SITE_TITLE
+admin.site.index_title = settings.ADMIN_INDEX_TITLE
+
 @login_required
 def homepage(request):
     from django.db.models import Q
