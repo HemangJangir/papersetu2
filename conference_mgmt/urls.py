@@ -80,5 +80,10 @@ urlpatterns = [
     path('home/', homepage, name='homepage'),
 ]
 
+# Serve static files in development and production
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) 
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+else:
+    # In production, serve static files through WhiteNoise
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) 

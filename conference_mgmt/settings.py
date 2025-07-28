@@ -107,15 +107,47 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Add whitenoise middleware for static files in production
 if not DEBUG:
     MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    # Use simpler static files storage for better compatibility
+    STATICFILES_STORAGE = 'whitenoise.storage.StaticFilesStorage'
     # Ensure admin static files are served
     WHITENOISE_ROOT = os.path.join(BASE_DIR, 'staticfiles')
     WHITENOISE_INDEX_FILE = True
+    # Add static files serving for admin
+    WHITENOISE_USE_FINDERS = True
+    WHITENOISE_AUTOREFRESH = True
 
 # Admin site configuration
 ADMIN_SITE_HEADER = "PaperSetu Admin"
 ADMIN_SITE_TITLE = "PaperSetu Administration"
 ADMIN_INDEX_TITLE = "Welcome to PaperSetu Administration"
+
+# Admin Interface Configuration
+ADMIN_INTERFACE_CONFIG = {
+    'name': 'PaperSetu Admin',
+    'favicon': 'https://img.icons8.com/color/48/000000/conference.png',
+    'logo': 'https://img.icons8.com/color/48/000000/conference.png',
+    'logo_color': '#2E86AB',
+    'title': 'PaperSetu Administration',
+    'title_color': '#2E86AB',
+    'css_header_background_color': '#2E86AB',
+    'css_header_text_color': '#FFFFFF',
+    'css_header_link_color': '#FFFFFF',
+    'css_header_link_hover_color': '#1A5F7A',
+    'css_module_background_color': '#F8F9FA',
+    'css_module_text_color': '#2E86AB',
+    'css_module_link_color': '#2E86AB',
+    'css_module_link_hover_color': '#1A5F7A',
+    'css_generic_link_color': '#2E86AB',
+    'css_generic_link_hover_color': '#1A5F7A',
+    'css_save_button_background_color': '#28A745',
+    'css_save_button_background_hover_color': '#218838',
+    'css_delete_button_background_color': '#DC3545',
+    'css_delete_button_background_hover_color': '#C82333',
+    'css_sidebar_background_color': '#F8F9FA',
+    'css_sidebar_text_color': '#2E86AB',
+    'css_sidebar_link_color': '#2E86AB',
+    'css_sidebar_link_hover_color': '#1A5F7A',
+}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

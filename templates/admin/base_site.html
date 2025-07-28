@@ -1,0 +1,205 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('PaperSetu Administration') }}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    :root {
+        --primary: #2E86AB;
+        --secondary: #1A5F7A;
+        --accent: #28A745;
+        --primary-fg: #fff;
+        --body-fg: #333;
+        --body-bg: #fff;
+        --header-color: #fff;
+        --header-branding-color: var(--accent);
+        --header-bg: var(--primary);
+        --header-link-color: #dee9fc;
+    }
+
+    #header {
+        background: var(--primary);
+        color: var(--header-color);
+    }
+
+    #branding h1 {
+        color: var(--header-color);
+    }
+
+    .module h2, .module caption, .inline-group h2 {
+        background: var(--primary);
+    }
+
+    div.breadcrumbs {
+        background: var(--secondary);
+        color: var(--header-color);
+    }
+
+    div.breadcrumbs a {
+        color: var(--header-color);
+    }
+
+    div.breadcrumbs a:hover {
+        color: var(--accent);
+    }
+
+    .button, input[type=submit], input[type=button], .submit-row input, a.button {
+        background: var(--accent);
+        color: var(--primary-fg);
+    }
+
+    .button:hover, input[type=submit]:hover, input[type=button]:hover {
+        background: var(--secondary);
+    }
+
+    .button.default, input[type=submit].default, .submit-row input.default {
+        background: var(--accent);
+    }
+
+    .button.default:hover, input[type=submit].default:hover {
+        background: var(--secondary);
+    }
+
+    a:link, a:visited {
+        color: var(--primary);
+    }
+
+    a:hover {
+        color: var(--secondary);
+    }
+
+    .object-tools a:link, .object-tools a:visited {
+        background: var(--accent);
+        color: var(--primary-fg);
+    }
+
+    .object-tools a:hover {
+        background: var(--secondary);
+    }
+
+    .selector-chosen h2 {
+        background: var(--primary) !important;
+        color: var(--primary-fg);
+    }
+
+    .calendar td.selected a {
+        background: var(--primary);
+    }
+
+    .calendar td a:focus, .timelist a:focus,
+    .calendar td a:hover, .timelist a:hover {
+        background: var(--accent);
+    }
+
+    .form-row {
+        padding: 4px 0;
+    }
+
+    .form-row label {
+        font-weight: bold;
+        color: var(--primary);
+    }
+
+    .help {
+        color: #666;
+        font-size: 13px;
+        margin: 0 0 0 0;
+        padding: 2px 0 3px 0;
+    }
+
+    .errorlist {
+        color: #ba2121;
+        background: #fff0f0;
+        border: 1px solid #ba2121;
+        border-radius: 4px;
+        padding: 8px 12px;
+        margin: 0 0 10px 0;
+    }
+
+    .success {
+        color: #155724;
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        border-radius: 4px;
+        padding: 8px 12px;
+        margin: 0 0 10px 0;
+    }
+
+    .warning {
+        color: #856404;
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 4px;
+        padding: 8px 12px;
+        margin: 0 0 10px 0;
+    }
+
+    /* Custom admin styling */
+    .admin-interface {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    .admin-interface .main {
+        background: #f8f9fa;
+        min-height: 100vh;
+    }
+
+    .admin-interface .content {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 20px;
+        padding: 20px;
+    }
+
+    /* Conference admin specific styling */
+    .conference-actions {
+        margin: 10px 0;
+    }
+
+    .conference-actions a {
+        display: inline-block;
+        margin: 2px 5px;
+        padding: 5px 10px;
+        background: var(--accent);
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
+    .conference-actions a:hover {
+        background: var(--secondary);
+    }
+
+    .conference-stats {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 15px;
+        margin: 10px 0;
+    }
+
+    .conference-stats h4 {
+        color: var(--primary);
+        margin-top: 0;
+    }
+
+    .conference-stats p {
+        margin: 5px 0;
+    }
+</style>
+{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <img src="{% static 'images/LOGO BG.png' %}" alt="PaperSetu" style="height: 30px; margin-right: 10px;">
+        {{ site_header|default:_('PaperSetu Administration') }}
+    </a>
+</h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %} 
