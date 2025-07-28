@@ -40,6 +40,8 @@ from .models import PCEmailLog
 from conference.models import ConferenceFeatureToggle, FEATURE_CHOICES
 from openpyxl import Workbook
 from django.utils.encoding import smart_str
+from conference.models import Conference, UserConferenceRole
+import csv
 
 class PCSendEmailForm(forms.Form):
     RECIPIENT_TYPE_CHOICES = [
@@ -388,26 +390,33 @@ def bulk_assign_papers(request):
 def pc_conference_detail(request, conf_id):
     conference = get_object_or_404(Conference, id=conf_id)
     user = request.user
-    
+    tab = request.GET.get('tab', 'Submissions')
     # Check if user is a pc_member for this conference and get their track
     user_role = UserConferenceRole.objects.filter(
         user=user, 
         conference=conference, 
         role='pc_member'
     ).first()
-    
     if not user_role:
         return render(request, 'dashboard/forbidden.html', {'message': 'You are not a PC member for this conference.'})
-    
+    # For Conference tab: show all conferences and roles
+    conferences_with_roles = None
+    if tab == 'Conference':
+        all_roles = UserConferenceRole.objects.filter(user=user).select_related('conference')
+        conf_map = {}
+        for role in all_roles:
+            conf = role.conference
+            if conf.id not in conf_map:
+                conf_map[conf.id] = {'conference': conf, 'roles': []}
+            conf_map[conf.id]['roles'].append(role.role)
+        conferences_with_roles = list(conf_map.values())
     # Get submissions and reviews for this conference - filter by track if PC member has a track assigned
     submissions = Paper.objects.filter(conference=conference).select_related('author', 'track')
     if user_role.track:
         submissions = submissions.filter(track=user_role.track)
-    
     for paper in submissions:
         paper.can_review = paper.reviews.filter(reviewer=user).exists()
         paper.review_id = paper.reviews.filter(reviewer=user).first().id if paper.can_review else None
-    
     reviews = Review.objects.filter(paper__conference=conference)
     nav_items = [
         {'label': 'Submissions', 'url': '#'},
@@ -420,10 +429,10 @@ def pc_conference_detail(request, conf_id):
     context = {
         'conference': conference,
         'submissions': submissions,
-        'reviews': reviews,
         'nav_items': nav_items,
-        'user_track': user_role.track,
-        'is_pc_member': True,
+        'active_tab': tab,
+        'conferences_with_roles': conferences_with_roles,
+        'user_track': user_role.track if user_role else None,
     }
     return render(request, 'dashboard/pc_conference_detail.html', context)
 
@@ -1056,44 +1065,53 @@ def conference_configuration(request, conf_id):
     """
     conference = get_object_or_404(Conference, id=conf_id)
     user = request.user
-
     # Ensure only the chair can access the configuration panel
     if conference.chair != user:
         return render(request, 'dashboard/forbidden.html', {
             'message': 'Only the conference chair can access the configuration panel.'
         })
-
-    edit_section = request.GET.get('edit')
-    message = None
-    forms_data = {}
-
-    # Handle Conference Info edit POST
-    if request.method == 'POST' and request.POST.get('section') == 'conference_info':
-        form = ConferenceInfoForm(request.POST, instance=conference)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Conference information updated successfully.')
+    edit_field = request.GET.get('edit_field')
+    # Handle inline field edit POST
+    if request.method == 'POST' and request.POST.get('edit_field'):
+        field_name = request.POST.get('edit_field')
+        new_value = request.POST.get('new_value')
+        # Type conversion for some fields
+        field = conference._meta.get_field(field_name)
+        try:
+            if isinstance(field, (models.IntegerField, models.PositiveIntegerField)):
+                new_value = int(new_value) if new_value else None
+            elif isinstance(field, models.BooleanField):
+                new_value = new_value.lower() in ['true', '1', 'yes', 'on']
+            elif isinstance(field, models.DecimalField):
+                new_value = float(new_value) if new_value else None
+            elif isinstance(field, models.DateField):
+                from datetime import datetime
+                new_value = datetime.strptime(new_value, '%Y-%m-%d').date() if new_value else None
+            elif isinstance(field, models.DateTimeField):
+                from datetime import datetime
+                new_value = datetime.strptime(new_value, '%Y-%m-%dT%H:%M') if new_value else None
+            conference.__setattr__(field_name, new_value)
+            conference.save()
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'value': getattr(conference, field_name)})
+            messages.success(request, f'{field.verbose_name.title()} updated successfully.')
             return redirect('dashboard:conference_configuration', conf_id=conf_id)
-        else:
-            forms_data['conference_info'] = form
-            edit_section = 'info'
-    else:
-        forms_data['conference_info'] = ConferenceInfoForm(instance=conference)
-
+        except Exception as e:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': str(e)})
+            messages.error(request, f'Error updating {field.verbose_name}: {e}')
+            edit_field = field_name
     # Navigation items for the conference
     nav_items = [
         "Submissions", "Reviews", "Status", "PC", "Events",
         "Email", "Administration", "Conference", "News", "papersetu", "Tracks"
     ]
-
     context = {
         'conference': conference,
-        'forms': forms_data,
-        'edit_section': edit_section,
+        'edit_field': edit_field,
         'nav_items': nav_items,
         'active_tab': 'Administration',
     }
-
     return render(request, 'dashboard/conference_configuration.html', context)
 
 @login_required
@@ -1167,25 +1185,23 @@ def registration_application_step2(request, conf_id):
             # Combine data from both steps
             step1_data = request.session['registration_step1']
             step2_data = form.cleaned_data
-            
-            # Convert date string back to date object
             from datetime import datetime
             registration_start_date = datetime.fromisoformat(step1_data['registration_start_date']).date()
-            
             # Create the application
             application = RegistrationApplication.objects.create(
                 conference=conference,
                 organizer=step1_data['organizer'],
                 country_region=step1_data['country_region'],
                 registration_start_date=registration_start_date,
+                contact_email=step1_data.get('contact_email', ''),
                 estimated_attendees=step2_data['estimated_attendees'],
+                registration_type=step2_data['registration_type'],
+                payment_method=step2_data['payment_method'],
                 notes=step2_data['notes']
             )
-            
             # Clear session data
             if 'registration_step1' in request.session:
                 del request.session['registration_step1']
-            
             # Send notification email to conference contact
             if conference.contact_email:
                 try:
@@ -1615,7 +1631,6 @@ class PCSendEmailView(FormView):
         context['email_logs'] = PCEmailLog.objects.filter(conference=self.conference).order_by('-sent_at')[:20]
         context['email_templates'] = list(EmailTemplate.objects.filter(conference=self.conference).values('id', 'subject', 'body'))
         # Group PC members by role
-        from conference.models import UserConferenceRole
         # Chair(s)
         chairs = UserConferenceRole.objects.filter(conference=self.conference, role='chair').select_related('user')
         # Ordinary PC members (exclude chair)
@@ -2893,7 +2908,6 @@ class CreateConferenceView(LoginRequiredMixin, CreateView):
             conference.save()
             
             # Create UserConferenceRole for the chair
-            from conference.models import UserConferenceRole
             UserConferenceRole.objects.get_or_create(
                 user=self.request.user,
                 conference=conference,
@@ -3957,11 +3971,90 @@ class AdminFeatureBaseView(LoginRequiredMixin, View):
 # Feature views
 class ConfigFeatureView(AdminFeatureBaseView):
     feature_key = 'config'
-    template_name = 'dashboard/admin_features/config.html'
+    template_name = 'dashboard/conference_configuration.html'
+
+    def get(self, request, conf_id):
+        conference = get_object_or_404(Conference, id=conf_id)
+        user = request.user
+        if conference.chair != user:
+            return render(request, 'dashboard/forbidden.html', {
+                'message': 'Only the conference chair can access the configuration panel.'
+            })
+        edit_field = request.GET.get('edit_field')
+        conference_fields = [
+            field for field in conference._meta.get_fields()
+            if getattr(field, 'editable', False) and not field.name.startswith('_') and field.name not in ['id', 'created_at']
+        ]
+        nav_items = [
+            "Submissions", "Reviews", "Status", "PC", "Events",
+            "Email", "Administration", "Conference", "News", "papersetu", "Tracks"
+        ]
+        context = {
+            'conference': conference,
+            'edit_field': edit_field,
+            'conference_fields': conference_fields,
+            'nav_items': nav_items,
+            'active_tab': 'Administration',
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, conf_id):
+        conference = get_object_or_404(Conference, id=conf_id)
+        user = request.user
+        if conference.chair != user:
+            return render(request, 'dashboard/forbidden.html', {
+                'message': 'Only the conference chair can access the configuration panel.'
+            })
+        edit_field = request.POST.get('edit_field')
+        new_value = request.POST.get('new_value')
+        field = conference._meta.get_field(edit_field)
+        try:
+            if isinstance(field, (models.IntegerField, models.PositiveIntegerField)):
+                new_value = int(new_value) if new_value else None
+            elif isinstance(field, models.BooleanField):
+                new_value = new_value.lower() in ['true', '1', 'yes', 'on']
+            elif isinstance(field, models.DecimalField):
+                new_value = float(new_value) if new_value else None
+            elif isinstance(field, models.DateField):
+                from datetime import datetime
+                new_value = datetime.strptime(new_value, '%Y-%m-%d').date() if new_value else None
+            elif isinstance(field, models.DateTimeField):
+                from datetime import datetime
+                new_value = datetime.strptime(new_value, '%Y-%m-%dT%H:%M') if new_value else None
+            conference.__setattr__(edit_field, new_value)
+            conference.save()
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'value': getattr(conference, edit_field)})
+            messages.success(request, f'{field.verbose_name.title()} updated successfully.')
+            return redirect('dashboard:admin_config', conf_id=conf_id)
+        except Exception as e:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': str(e)})
+            messages.error(request, f'Error updating {field.verbose_name}: {e}')
+        conference_fields = [
+            field for field in conference._meta.get_fields()
+            if getattr(field, 'editable', False) and not field.name.startswith('_') and field.name not in ['id', 'created_at']
+        ]
+        nav_items = [
+            "Submissions", "Reviews", "Status", "PC", "Events",
+            "Email", "Administration", "Conference", "News", "papersetu", "Tracks"
+        ]
+        context = {
+            'conference': conference,
+            'edit_field': edit_field,
+            'conference_fields': conference_fields,
+            'nav_items': nav_items,
+            'active_tab': 'Administration',
+        }
+        return render(request, self.template_name, context)
 
 class RegistrationFeatureView(AdminFeatureBaseView):
     feature_key = 'registration'
     template_name = 'dashboard/admin_features/registration.html'
+    def get(self, request, conf_id):
+        # Redirect to the real registration application step 1
+        from django.urls import reverse
+        return redirect(reverse('dashboard:registration_application_step1', args=[conf_id]))
 
 class UtilitiesFeatureView(AdminFeatureBaseView):
     feature_key = 'utilities'
@@ -3970,10 +4063,68 @@ class UtilitiesFeatureView(AdminFeatureBaseView):
 class AnalyticsFeatureView(AdminFeatureBaseView):
     feature_key = 'analytics'
     template_name = 'dashboard/admin_features/analytics.html'
+    def get(self, request, conf_id):
+        from conference.models import Paper
+        conference = get_object_or_404(Conference, id=conf_id)
+        user = request.user
+        # Only chair or PC members can view
+        user_roles = UserConferenceRole.objects.filter(user=user, conference=conference).values_list('role', flat=True)
+        if conference.chair != user and 'pc_member' not in user_roles:
+            return render(request, 'dashboard/forbidden.html', {'message': 'Only the chair or PC members can view analytics.'})
+        papers = Paper.objects.filter(conference=conference).select_related('author')
+        total_submissions = papers.count()
+        accepted_papers = papers.filter(status='accepted').count()
+        rejected_papers = papers.filter(status='rejected').count()
+        pending_papers = papers.filter(status='submitted').count()
+        context = {
+            'conference': conference,
+            'total_submissions': total_submissions,
+            'accepted_papers': accepted_papers,
+            'rejected_papers': rejected_papers,
+            'pending_papers': pending_papers,
+            'papers': papers,
+        }
+        return render(request, self.template_name, context)
 
 class StatisticsFeatureView(AdminFeatureBaseView):
     feature_key = 'statistics'
     template_name = 'dashboard/admin_features/statistics.html'
+    def get(self, request, conf_id):
+        from conference.models import Paper, Review
+        from django.contrib.auth import get_user_model
+        conference = get_object_or_404(Conference, id=conf_id)
+        user = request.user
+        # Only chair or PC members can view
+        user_roles = UserConferenceRole.objects.filter(user=user, conference=conference).values_list('role', flat=True)
+        if conference.chair != user and 'pc_member' not in user_roles:
+            return render(request, 'dashboard/forbidden.html', {'message': 'Only the chair or PC members can view statistics.'})
+        papers = Paper.objects.filter(conference=conference)
+        reviews = Review.objects.filter(paper__in=papers).select_related('reviewer')
+        reviewer_ids = reviews.values_list('reviewer', flat=True).distinct()
+        User = get_user_model()
+        reviewers = User.objects.filter(id__in=reviewer_ids)
+        reviewer_stats = []
+        for reviewer in reviewers:
+            assigned = reviews.filter(reviewer=reviewer).count()
+            completed = reviews.filter(reviewer=reviewer).exclude(decision__isnull=True).count()
+            completion_rate = round((completed / assigned) * 100, 1) if assigned else 0
+            reviewer_stats.append({
+                'name': reviewer.get_full_name() or reviewer.username,
+                'total_assigned': assigned,
+                'completed': completed,
+                'completion_rate': completion_rate,
+            })
+        total_reviewers = reviewers.count()
+        total_reviews = reviews.count()
+        avg_reviews_per_paper = round(total_reviews / papers.count(), 2) if papers.count() else 0
+        context = {
+            'conference': conference,
+            'total_reviewers': total_reviewers,
+            'total_reviews': total_reviews,
+            'avg_reviews_per_paper': avg_reviews_per_paper,
+            'reviewer_stats': reviewer_stats,
+        }
+        return render(request, self.template_name, context)
 
 class DemoFeatureView(AdminFeatureBaseView):
     feature_key = 'demo'
@@ -4094,10 +4245,47 @@ class TracksFeatureView(AdminFeatureBaseView):
         
         return redirect('dashboard:admin_tracks', conf_id=conf_id)
 
+# class CFPFeatureView(AdminFeatureBaseView):
+#     feature_key = 'cfp'
+#     template_name = 'dashboard/admin_features/cfp.html'
 class CFPFeatureView(AdminFeatureBaseView):
     feature_key = 'cfp'
     template_name = 'dashboard/admin_features/cfp.html'
 
+    def get(self, request, conf_id):
+        conference = get_object_or_404(Conference, id=conf_id)
+        context = {
+            'conference': conference,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, conf_id):
+        conference = get_object_or_404(Conference, id=conf_id)
+        cfp_title = request.POST.get('cfp_title', '')
+        cfp_description = request.POST.get('cfp_description', '')
+        submission_deadline = request.POST.get('submission_deadline', '')
+        notification_date = request.POST.get('notification_date', '')
+        camera_ready_deadline = request.POST.get('camera_ready_deadline', '')
+        conference_dates = request.POST.get('conference_dates', '')
+        topics = request.POST.get('topics', '')
+        submission_link = request.POST.get('submission_link', '')
+        contact_email = request.POST.get('contact_email', '')
+        from django.contrib import messages
+        messages.success(request, 'CFP saved successfully!')
+        context = {
+            'conference': conference,
+            'cfp_title': cfp_title,
+            'cfp_description': cfp_description,
+            'submission_deadline': submission_deadline,
+            'notification_date': notification_date,
+            'camera_ready_deadline': camera_ready_deadline,
+            'conference_dates': conference_dates,
+            'topics': topics,
+            'submission_link': submission_link,
+            'contact_email': contact_email,
+            'cfp_submitted': True,
+        }
+        return render(request, self.template_name, context)
 class ProgramFeatureView(AdminFeatureBaseView):
     feature_key = 'program'
     template_name = 'dashboard/admin_features/program.html'
@@ -4173,3 +4361,59 @@ def export_submissions_excel_options(request, conf_id):
         'conference': conference,
         'available_columns': available_columns,
     })
+
+@login_required
+def export_reviews(request, conf_id):
+    conference = get_object_or_404(Conference, id=conf_id)
+    user = request.user
+    user_roles = UserConferenceRole.objects.filter(user=user, conference=conference).values_list('role', flat=True)
+    if conference.chair != user and 'pc_member' not in user_roles:
+        return render(request, 'dashboard/forbidden.html', {'message': 'Only the chair or PC members can export reviews.'})
+    from conference.models import Paper, Review
+    papers = Paper.objects.filter(conference=conference)
+    reviews = Review.objects.filter(paper__in=papers).select_related('paper', 'reviewer')
+    export_format = request.GET.get('format', 'csv')
+    columns = ['Paper Title', 'Paper ID', 'Reviewer', 'Decision', 'Recommendation', 'Comments', 'Rating', 'Confidence', 'Submitted At']
+    if export_format == 'excel':
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Reviews'
+        ws.append(columns)
+        for review in reviews:
+            ws.append([
+                review.paper.title,
+                review.paper.paper_id,
+                review.reviewer.get_full_name() or review.reviewer.username,
+                review.decision,
+                review.recommendation,
+                review.comments,
+                review.rating,
+                review.confidence,
+                review.submitted_at.strftime('%Y-%m-%d %H:%M') if review.submitted_at else ''
+            ])
+        from django.utils.encoding import smart_str
+        from io import BytesIO
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="{conference.acronym or conference.name}_reviews.xlsx"'
+        return response
+    else:
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{conference.acronym or conference.name}_reviews.csv"'
+        writer = csv.writer(response)
+        writer.writerow(columns)
+        for review in reviews:
+            writer.writerow([
+                review.paper.title,
+                review.paper.paper_id,
+                review.reviewer.get_full_name() or review.reviewer.username,
+                review.decision,
+                review.recommendation,
+                review.comments,
+                review.rating,
+                review.confidence,
+                review.submitted_at.strftime('%Y-%m-%d %H:%M') if review.submitted_at else ''
+            ])
+        return response

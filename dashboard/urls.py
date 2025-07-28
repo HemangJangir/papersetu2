@@ -36,6 +36,7 @@ urlpatterns = [
     path('conference/<int:conf_id>/utilities/accepted-submissions/', views.accepted_submissions_list, name='accepted_submissions'),
     path('conference/<int:conf_id>/utilities/accepted-submissions/export/', views.export_accepted_submissions_csv, name='accepted_submissions_export'),
     path('conference/<int:conf_id>/utilities/reviews/', views.reviews_list, name='all_reviews'),
+    path('conference/<int:conf_id>/export-reviews/', views.export_reviews, name='export_reviews'),
     path('chair/conference/<int:conf_id>/pc/email/', views.PCSendEmailView.as_view(), name='pc_send_email'),
     path('chair/conference/<int:conf_id>/pc/email/template/', views.get_email_template, name='pc_email_template'),
     path('chair/conference/<int:conf_id>/pc/email/sample/', views.get_sample_recipient_data, name='pc_email_sample'),

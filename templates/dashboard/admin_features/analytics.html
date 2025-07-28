@@ -7,15 +7,56 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-10 mt-16 mb-12">
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl p-10 mt-16 mb-12">
         <h1 class="text-3xl font-extrabold text-blue-700 mb-8 flex items-center gap-3">
-            <i class="fas fa-chart-line"></i> {{ feature_name }}
+            <i class="fas fa-chart-line"></i> Conference Analytics
         </h1>
-        {% if not feature_enabled %}
-            <div class="bg-red-100 text-red-700 px-4 py-3 rounded mb-6">{{ disabled_message }}</div>
-        {% else %}
-            <div class="bg-green-50 text-green-800 px-4 py-3 rounded mb-6">This is the <b>{{ feature_name }}</b> feature for <b>{{ conference.name }}</b>. You can customize this section as needed.</div>
-        {% endif %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 flex flex-col justify-between shadow">
+                <h2 class="text-lg font-bold text-blue-800 mb-2">Total Submissions</h2>
+                <div class="text-3xl font-extrabold text-blue-900">{{ total_submissions }}</div>
+            </div>
+            <div class="bg-green-50 border border-green-200 rounded-lg p-6 flex flex-col justify-between shadow">
+                <h2 class="text-lg font-bold text-green-800 mb-2">Accepted Papers</h2>
+                <div class="text-3xl font-extrabold text-green-900">{{ accepted_papers }}</div>
+            </div>
+            <div class="bg-red-50 border border-red-200 rounded-lg p-6 flex flex-col justify-between shadow">
+                <h2 class="text-lg font-bold text-red-800 mb-2">Rejected Papers</h2>
+                <div class="text-3xl font-extrabold text-red-900">{{ rejected_papers }}</div>
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 flex flex-col justify-between shadow">
+                <h2 class="text-lg font-bold text-yellow-800 mb-2">Pending Papers</h2>
+                <div class="text-3xl font-extrabold text-yellow-900">{{ pending_papers }}</div>
+            </div>
+        </div>
+        <div class="mb-10">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Paper & Review Statistics</h2>
+            <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg shadow">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Paper Title</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Author</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Submitted Date</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reviews</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for paper in papers %}
+                    <tr>
+                        <td class="px-4 py-2">{{ paper.title }}</td>
+                        <td class="px-4 py-2">{{ paper.author.get_full_name|default:paper.author.username }}</td>
+                        <td class="px-4 py-2">{{ paper.status|title }}</td>
+                        <td class="px-4 py-2">{{ paper.submitted_at|date:"Y-m-d" }}</td>
+                        <td class="px-4 py-2">{{ paper.reviews.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-10">
+            <a href="/dashboard/conference/{{ conference.id }}/analytics/export/" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded transition">Export Analytics Data</a>
+        </div>
     </div>
 </body>
 </html> 

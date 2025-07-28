@@ -107,6 +107,20 @@
                 </div>
 
                 <div>
+                    <label for="{{ form.contact_email.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        {{ form.contact_email.label }}
+                        <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.contact_email }}
+                    {% if form.contact_email.help_text %}
+                        <p class="text-xs text-gray-500 mt-1">{{ form.contact_email.help_text }}</p>
+                    {% endif %}
+                    {% if form.contact_email.errors %}
+                        <p class="text-xs text-red-600 mt-1">{{ form.contact_email.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
                     <label for="{{ form.registration_start_date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
                         {{ form.registration_start_date.label }}
                         <span class="text-red-500">*</span>

@@ -70,8 +70,12 @@
                         <span class="text-red-500">*</span>
                     {% endif %}
                 </label>
-                
-                {% if field.field.widget.input_type == 'checkbox' %}
+                {% if field.name == 'registration_type' or field.name == 'payment_method' %}
+                    {{ field }}
+                    {% if field.help_text %}
+                        <p class="text-sm text-gray-500">{{ field.help_text }}</p>
+                    {% endif %}
+                {% elif field.field.widget.input_type == 'checkbox' %}
                     <div class="flex items-center">
                         {{ field }}
                         <label for="{{ field.id_for_label }}" class="ml-2 text-sm text-gray-600">
@@ -89,7 +93,6 @@
                         <p class="text-sm text-gray-500">{{ field.help_text }}</p>
                     {% endif %}
                 {% endif %}
-                
                 {% if field.errors %}
                     <div class="text-sm text-red-600">
                         {% for error in field.errors %}

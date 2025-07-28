@@ -323,29 +323,39 @@ class RegistrationApplication(models.Model):
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
     ]
-    
+    REG_TYPE_CHOICES = [
+        ('regular', 'Regular'),
+        ('student', 'Student'),
+        ('invited', 'Invited'),
+        ('other', 'Other'),
+    ]
+    PAYMENT_METHOD_CHOICES = [
+        ('online', 'Online'),
+        ('bank', 'Bank Transfer'),
+        ('onsite', 'Onsite'),
+        ('other', 'Other'),
+    ]
     conference = models.OneToOneField(Conference, on_delete=models.CASCADE, related_name='registration_application')
     organizer = models.CharField(max_length=255, help_text="Individual or organization name")
     country_region = models.CharField(max_length=100, help_text="Country or region")
     registration_start_date = models.DateField(help_text="When registration opens")
+    contact_email = models.EmailField(help_text="Main contact email for registration", blank=True)
     estimated_attendees = models.IntegerField(help_text="Expected number of attendees")
-    
+    registration_type = models.CharField(max_length=20, choices=REG_TYPE_CHOICES, default='regular', help_text="Type of registration")
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='online', help_text="Preferred payment method")
     # Application status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     applied_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
     reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_applications')
-    
     # Additional fields
     notes = models.TextField(blank=True, help_text="Additional notes or requirements")
     admin_notes = models.TextField(blank=True, help_text="Admin notes for review")
-    
     class Meta:
         verbose_name = 'Registration Application'
         verbose_name_plural = 'Registration Applications'
-    
     def __str__(self):
-        return f"Registration Application for {self.conference.name} - {self.status}"
+        return f"Registration for {self.conference.name}"
 
 class EmailTemplate(models.Model):
     """
