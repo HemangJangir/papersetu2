@@ -7,6 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 </head>
 
@@ -28,15 +30,18 @@
         <div>
           <input type="text" name="username" id="id_username" required
             class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
-            placeholder="Username" value="{{ form.username.value|default_if_none:'' }}">
+            placeholder="Username or Email" value="{{ form.username.value|default_if_none:'' }}">
           {% if form.username.errors %}
             <p class="text-red-500 text-sm mt-1">{{ form.username.errors.0 }}</p>
           {% endif %}
         </div>
-        <div>
+        <div class="relative">
           <input type="password" name="password" id="id_password" required
-            class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
+            class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition pr-10"
             placeholder="Password">
+          <button type="button" onclick="togglePassword('id_password')" class="absolute right-0 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none">
+            <i id="eye-icon-id_password" class="fas fa-eye"></i>
+          </button>
           {% if form.password.errors %}
             <p class="text-red-500 text-sm mt-1">{{ form.password.errors.0 }}</p>
           {% endif %}
@@ -124,18 +129,24 @@
               <div class="text-red-600 text-xs">{{ signup_form.email.errors }}</div>
             {% endif %}
           </div>
-          <div>
+          <div class="relative">
             <input type="password" name="password1" id="id_password1" required
-              class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
+              class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition pr-10"
               placeholder="Password">
+            <button type="button" onclick="togglePassword('id_password1')" class="absolute right-0 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none">
+              <i id="eye-icon-id_password1" class="fas fa-eye"></i>
+            </button>
             {% if signup_form.password1.errors %}
               <div class="text-red-600 text-xs">{{ signup_form.password1.errors }}</div>
             {% endif %}
           </div>
-          <div>
+          <div class="relative">
             <input type="password" name="password2" id="id_password2" required
-              class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition"
+              class="w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-indigo-800 focus:ring-0 px-0 py-3 text-gray-900 placeholder-gray-400 text-lg transition pr-10"
               placeholder="Confirm Password">
+            <button type="button" onclick="togglePassword('id_password2')" class="absolute right-0 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none">
+              <i id="eye-icon-id_password2" class="fas fa-eye"></i>
+            </button>
             {% if signup_form.password2.errors %}
               <div class="text-red-600 text-xs">{{ signup_form.password2.errors }}</div>
             {% endif %}
@@ -161,6 +172,22 @@
       registerOverlay.classList.add('opacity-0', 'pointer-events-none');
       registerOverlay.classList.remove('opacity-100');
     });
+
+    // Password visibility toggle function
+    function togglePassword(inputId) {
+      const input = document.getElementById(inputId);
+      const eyeIcon = document.getElementById('eye-icon-' + inputId);
+      
+      if (input.type === 'password') {
+        input.type = 'text';
+        eyeIcon.classList.remove('fa-eye');
+        eyeIcon.classList.add('fa-eye-slash');
+      } else {
+        input.type = 'password';
+        eyeIcon.classList.remove('fa-eye-slash');
+        eyeIcon.classList.add('fa-eye');
+      }
+    }
   </script>
 
 </body>
