@@ -136,15 +136,15 @@
                     </div>
                     
                     <div>
-                        <label for="chair" class="block text-sm font-medium text-gray-700 mb-1">Track Chair</label>
-                        <select name="chair" id="chair"
+                        <label for="pc_member" class="block text-sm font-medium text-gray-700 mb-1">PC Member</label>
+                        <select name="pc_member" id="pc_member"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="">Select Track Chair (optional)</option>
+                            <option value="">Select PC Member (optional)</option>
                             {% for pc_member in pc_members %}
                                 <option value="{{ pc_member.user.id }}">{{ pc_member.user.get_full_name|default:pc_member.user.username }} ({{ pc_member.user.email }})</option>
                             {% endfor %}
                         </select>
-                        <p class="text-xs text-gray-500 mt-1">Assign a PC member as track chair (optional)</p>
+                        <p class="text-xs text-gray-500 mt-1">Assign a PC member to this track (optional)</p>
                     </div>
                     
                     <button type="submit" name="action" value="add_track"
@@ -168,7 +168,7 @@
                                 <tr>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Track ID</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chair</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PC Member</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Papers</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
@@ -241,10 +241,10 @@
                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                             </div>
                             <div>
-                                <label for="edit_chair" class="block text-sm font-medium text-gray-700 mb-1">Track Chair</label>
-                                <select name="edit_chair" id="edit_chair"
+                                <label for="edit_pc_member" class="block text-sm font-medium text-gray-700 mb-1">PC Member</label>
+                                <select name="edit_pc_member" id="edit_pc_member"
                                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                    <option value="">Select Track Chair (optional)</option>
+                                    <option value="">Select PC Member (optional)</option>
                                     {% for pc_member in pc_members %}
                                         <option value="{{ pc_member.user.id }}">{{ pc_member.user.get_full_name|default:pc_member.user.username }} ({{ pc_member.user.email }})</option>
                                     {% endfor %}
@@ -297,11 +297,11 @@
     </main>
 
     <script>
-        function editTrack(trackId, trackIdValue, trackName, chairId) {
+        function editTrack(trackId, trackIdValue, trackName, pcMemberId) {
             document.getElementById('edit_track_id_hidden').value = trackId;
             document.getElementById('edit_track_id').value = trackIdValue;
             document.getElementById('edit_track_name').value = trackName;
-            document.getElementById('edit_chair').value = chairId;
+            document.getElementById('edit_pc_member').value = pcMemberId;
             document.getElementById('editModal').classList.remove('hidden');
         }
 

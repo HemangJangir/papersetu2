@@ -4182,7 +4182,7 @@ class TracksFeatureView(AdminFeatureBaseView):
         if action == 'add_track':
             track_id = request.POST.get('track_id', '').strip()
             track_name = request.POST.get('track_name', '').strip()
-            chair_id = request.POST.get('chair', '').strip()
+            pc_member_id = request.POST.get('pc_member', '').strip()
             
             if not track_id or not track_name:
                 messages.error(request, 'Track ID and Track Name are required.')
@@ -4198,7 +4198,7 @@ class TracksFeatureView(AdminFeatureBaseView):
                 track_id=track_id,
                 name=track_name,
                 conference=conference,
-                chair_id=chair_id if chair_id else None
+                chair_id=pc_member_id if pc_member_id else None
             )
             
             messages.success(request, f'Track "{track_name}" ({track_id}) created successfully.')
@@ -4207,7 +4207,7 @@ class TracksFeatureView(AdminFeatureBaseView):
             track_id_hidden = request.POST.get('track_id_hidden')
             track_id = request.POST.get('edit_track_id', '').strip()
             track_name = request.POST.get('edit_track_name', '').strip()
-            chair_id = request.POST.get('edit_chair', '').strip()
+            pc_member_id = request.POST.get('edit_pc_member', '').strip()
             
             if not track_id or not track_name:
                 messages.error(request, 'Track ID and Track Name are required.')
@@ -4223,7 +4223,7 @@ class TracksFeatureView(AdminFeatureBaseView):
                 
                 track.track_id = track_id
                 track.name = track_name
-                track.chair_id = chair_id if chair_id else None
+                track.chair_id = pc_member_id if pc_member_id else None
                 track.save()
                 
                 messages.success(request, f'Track "{track_name}" ({track_id}) updated successfully.')
