@@ -23,7 +23,8 @@ class Command(BaseCommand):
                 'email': 'chair@icimmi.com',
                 'first_name': 'ICIMMI',
                 'last_name': 'Chair',
-                'is_staff': True,
+                'is_active': True,
+                'is_verified': True,
             }
         )
         
