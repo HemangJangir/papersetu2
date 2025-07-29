@@ -3,7 +3,7 @@ services:
     name: papersetu
     env: python
     buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: gunicorn conference_mgmt.wsgi:application
+    startCommand: gunicorn conference_mgmt.wsgi:application --config gunicorn.conf.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
