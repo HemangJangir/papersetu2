@@ -25,6 +25,7 @@ class CombinedAuthView(LoginView):
                 otp = str(random.randint(100000, 999999))
                 user.otp = otp
                 user.otp_created_at = timezone.now()
+                user.set_password(form.cleaned_data['password1'])
                 user.save()
                 send_mail(
                     'Your OTP for PaperSetu Registration',
