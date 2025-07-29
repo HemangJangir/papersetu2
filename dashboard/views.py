@@ -434,6 +434,7 @@ def pc_conference_detail(request, conf_id):
         'active_tab': tab,
         'conferences_with_roles': conferences_with_roles,
         'user_track': user_role.track if user_role else None,
+        'invite_link': request.build_absolute_uri(reverse('conference:join_conference', args=[conference.invite_link])) if conference.invite_link else None,
     }
     return render(request, 'dashboard/pc_conference_detail.html', context)
 

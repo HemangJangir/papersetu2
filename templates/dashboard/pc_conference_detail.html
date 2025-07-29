@@ -28,6 +28,13 @@
                 </a>
                 <span class="text-xl font-bold text-blue-700 ml-4">{{ conference.acronym|default:conference.name }}</span>
             </div>
+            {% if invite_link %}
+            <div class="mt-2 ml-20">
+                <span class="font-semibold text-gray-700">Invite Link:</span>
+                <input type="text" readonly value="{{ invite_link }}" class="w-96 px-2 py-1 border rounded bg-gray-100 text-blue-700 font-mono" onclick="this.select();document.execCommand('copy');" title="Click to copy">
+                <span class="text-xs text-gray-500 ml-2">(Share this link to invite authors or users to join this conference)</span>
+            </div>
+            {% endif %}
             <div class="flex items-center space-x-6">
                 <a href="/home/" class="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors">
                     <i class="fas fa-home"></i>
