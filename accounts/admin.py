@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import User
+from django.utils.html import format_html
 
 class CustomUserAdmin(UserAdmin):
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_active', 'is_verified', 'date_joined', 'last_login', 'user_actions')
@@ -44,7 +45,7 @@ class CustomUserAdmin(UserAdmin):
         if user_papers.exists():
             actions.append(f'<a href="/admin/conference/paper/?author__id__exact={obj.id}" style="color: #ffc107; text-decoration: none;">📄 Papers ({user_papers.count()})</a>')
         
-        return admin.utils.format_html_join('', '{}', ((action,) for action in actions))
+        return format_html(''.join(actions))
     user_actions.short_description = 'Actions'
 
     def get_queryset(self, request):
