@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - PaperSetu{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-page">
+                <h1 class="display-1 text-danger">500</h1>
+                <h2 class="mb-4">Server Error</h2>
+                <p class="lead mb-4">Something went wrong on our end. We're working to fix this issue.</p>
+                
+                <div class="alert alert-info" role="alert">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>What you can do:</strong>
+                    <ul class="mb-0 mt-2 text-start">
+                        <li>Try refreshing the page</li>
+                        <li>Check back in a few minutes</li>
+                        <li>Contact support if the problem persists</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <a href="{% url 'landing' %}" class="btn btn-primary me-3">
+                        <i class="fas fa-home"></i> Go Home
+                    </a>
+                    <button onclick="window.location.reload()" class="btn btn-outline-primary">
+                        <i class="fas fa-redo"></i> Refresh Page
+                    </button>
+                </div>
+                
+                <div class="mt-5">
+                    <h5>Quick Links:</h5>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <a href="{% url 'conference:conferences_list' %}" class="btn btn-outline-secondary w-100 mb-2">
+                                <i class="fas fa-calendar-alt"></i> Browse Conferences
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% url 'accounts:login' %}" class="btn btn-outline-secondary w-100 mb-2">
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page {
+    padding: 40px 0;
+}
+
+.error-page .display-1 {
+    font-size: 6rem;
+    font-weight: 300;
+}
+
+.alert ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.alert li {
+    padding: 2px 0;
+}
+
+.alert li:before {
+    content: "• ";
+    color: #0d6efd;
+    font-weight: bold;
+}
+</style>
+{% endblock %} 

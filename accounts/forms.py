@@ -32,11 +32,39 @@ class UserRegistrationForm(UserCreationForm):
         model = User
         fields = ['first_name', 'last_name', 'username', 'email', 'password1', 'password2']
 
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if User.objects.filter(username=username).exists():
+            raise forms.ValidationError('A user with that username already exists.')
+        return username
+
     def clean_email(self):
         email = self.cleaned_data.get('email')
         if User.objects.filter(email=email).exists():
             raise forms.ValidationError('A user with that email already exists.')
         return email
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Check password validation first before checking username/email uniqueness
+        password1 = cleaned_data.get('password1')
+        password2 = cleaned_data.get('password2')
+        
+        if password1 and password2:
+            if password1 != password2:
+                raise forms.ValidationError("The two password fields didn't match.")
+            
+            # Check password strength
+            if len(password1) < 8:
+                raise forms.ValidationError("Password must be at least 8 characters long.")
+            
+            if password1.isdigit():
+                raise forms.ValidationError("Password cannot be entirely numeric.")
+            
+            if password1.lower() in ['password', '123456', '12345678', 'qwerty', 'abc123', 'password123']:
+                raise forms.ValidationError("This password is too common. Please choose a stronger password.")
+        
+        return cleaned_data
 
 class PasswordResetEmailForm(forms.Form):
     email = forms.EmailField(

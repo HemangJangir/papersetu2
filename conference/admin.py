@@ -32,12 +32,12 @@ class ConferenceStatusFilter(SimpleListFilter):
             return queryset.filter(status='completed')
 
 class ConferenceAdmin(admin.ModelAdmin):
-    list_display = ('name', 'acronym', 'chair', 'is_approved', 'status', 'start_date', 'end_date', 'approve_conference', 'conference_actions')
-    list_filter = (ConferenceStatusFilter, 'primary_area', 'start_date', 'is_approved')
-    search_fields = ('name', 'acronym', 'chair__username', 'chair__email', 'theme_domain', 'venue', 'city')
+    list_display = ('name', 'acronym', 'chair_info', 'status_display', 'approval_status', 'dates_display', 'conference_actions')
+    list_filter = (ConferenceStatusFilter, 'primary_area', 'start_date', 'is_approved', 'status')
+    search_fields = ('name', 'acronym', 'chair__username', 'chair__email', 'chair__first_name', 'chair__last_name', 'theme_domain', 'venue', 'city')
     list_per_page = 25
     date_hierarchy = 'start_date'
-    readonly_fields = ('created_at', 'conference_stats')
+    readonly_fields = ('created_at', 'conference_stats', 'chair_info_display')
     list_editable = ('status',)
     
     fieldsets = (
@@ -71,6 +71,84 @@ class ConferenceAdmin(admin.ModelAdmin):
         }),
     )
 
+    def chair_info(self, obj):
+        if obj.chair:
+            return format_html(
+                '<div style="min-width: 150px;">'
+                '<strong>{}</strong><br>'
+                '<small style="color: #666;">{}</small><br>'
+                '<small style="color: #666;">{}</small>'
+                '</div>',
+                obj.chair.get_full_name() or obj.chair.username,
+                obj.chair.email,
+                f"Created: {obj.chair.date_joined.strftime('%Y-%m-%d')}"
+            )
+        return "No chair assigned"
+    chair_info.short_description = 'Conference Chair'
+
+    def chair_info_display(self, obj):
+        if obj.chair:
+            return format_html(
+                '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e9ecef;">'
+                '<h4 style="margin-top: 0; color: #495057;">Chair Information</h4>'
+                '<p><strong>Name:</strong> {}</p>'
+                '<p><strong>Username:</strong> {}</p>'
+                '<p><strong>Email:</strong> {}</p>'
+                '<p><strong>Date Joined:</strong> {}</p>'
+                '<p><strong>Last Login:</strong> {}</p>'
+                '<p><strong>Account Status:</strong> <span style="color: {};">{}</span></p>'
+                '</div>',
+                obj.chair.get_full_name() or "Not provided",
+                obj.chair.username,
+                obj.chair.email,
+                obj.chair.date_joined.strftime('%Y-%m-%d %H:%M'),
+                obj.chair.last_login.strftime('%Y-%m-%d %H:%M') if obj.chair.last_login else "Never",
+                "#28a745" if obj.chair.is_active else "#dc3545",
+                "Active" if obj.chair.is_active else "Inactive"
+            )
+        return "No chair assigned"
+    chair_info_display.short_description = 'Chair Details'
+
+    def status_display(self, obj):
+        status_colors = {
+            'upcoming': '#007bff',
+            'live': '#28a745',
+            'completed': '#6c757d',
+            'cancelled': '#dc3545',
+        }
+        color = status_colors.get(obj.status, '#6c757d')
+        return format_html(
+            '<span style="color: {}; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.05);">'
+            '{}'
+            '</span>',
+            color, obj.status.title()
+        )
+    status_display.short_description = 'Status'
+
+    def approval_status(self, obj):
+        if obj.is_approved:
+            return format_html(
+                '<span style="color: #28a745; font-weight: 600;">✓ Approved</span>'
+            )
+        else:
+            return format_html(
+                '<span style="color: #ffc107; font-weight: 600;">⏳ Pending</span>'
+            )
+    approval_status.short_description = 'Approval'
+
+    def dates_display(self, obj):
+        return format_html(
+            '<div style="min-width: 120px;">'
+            '<strong>Start:</strong> {}<br>'
+            '<strong>End:</strong> {}<br>'
+            '<small style="color: #666;">Deadline: {}</small>'
+            '</div>',
+            obj.start_date.strftime('%Y-%m-%d'),
+            obj.end_date.strftime('%Y-%m-%d'),
+            obj.paper_submission_deadline.strftime('%Y-%m-%d') if obj.paper_submission_deadline else "Not set"
+        )
+    dates_display.short_description = 'Dates'
+
     def approve_conference(self, obj):
         if not obj.is_approved:
             return format_html(
@@ -83,10 +161,11 @@ class ConferenceAdmin(admin.ModelAdmin):
 
     def conference_actions(self, obj):
         actions = []
-        actions.append(f'<a href="/admin/conference/paper/?conference__id__exact={obj.id}" style="color: #007bff; text-decoration: none;">📄 Papers</a>')
-        actions.append(f'<a href="/admin/conference/userconferencerole/?conference__id__exact={obj.id}" style="color: #007bff; text-decoration: none;">👥 Roles</a>')
-        actions.append(f'<a href="/dashboard/conference_submissions/{obj.id}/" style="color: #28a745; text-decoration: none;">🔧 Manage</a>')
-        return mark_safe(' | '.join(actions))
+        actions.append(f'<a href="/admin/conference/paper/?conference__id__exact={obj.id}" style="color: #007bff; text-decoration: none; margin-right: 10px;">📄 Papers</a>')
+        actions.append(f'<a href="/admin/conference/userconferencerole/?conference__id__exact={obj.id}" style="color: #007bff; text-decoration: none; margin-right: 10px;">👥 Roles</a>')
+        actions.append(f'<a href="/dashboard/conference_submissions/{obj.id}/" style="color: #28a745; text-decoration: none; margin-right: 10px;">🔧 Manage</a>')
+        actions.append(f'<a href="/admin/conference/conference/{obj.id}/change/" style="color: #6c757d; text-decoration: none;">✏️ Edit</a>')
+        return mark_safe(''.join(actions))
     conference_actions.short_description = 'Actions'
 
     def conference_stats(self, obj):
@@ -97,15 +176,59 @@ class ConferenceAdmin(admin.ModelAdmin):
         user_count = obj.userconferencerole_set.count()
         review_count = Review.objects.filter(paper__conference=obj).count()
         
-        return format_html(
-            '<div style="background: #f8f9fa; padding: 10px; border-radius: 5px;">'
-            '<h4>Conference Statistics</h4>'
-            '<p><strong>Papers:</strong> {}</p>'
-            '<p><strong>Users:</strong> {}</p>'
-            '<p><strong>Reviews:</strong> {}</p>'
+        # Get recent activity
+        recent_papers = obj.papers.order_by('-created_at')[:5]
+        recent_roles = obj.userconferencerole_set.order_by('-created_at')[:5]
+        
+        stats_html = format_html(
+            '<div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">'
+            '<h4 style="margin-top: 0; color: #495057; border-bottom: 2px solid #dee2e6; padding-bottom: 10px;">Conference Statistics</h4>'
+            '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;">'
+            '<div style="text-align: center; padding: 15px; background: white; border-radius: 6px; border: 1px solid #dee2e6;">'
+            '<div style="font-size: 24px; font-weight: bold; color: #007bff;">{}</div>'
+            '<div style="color: #6c757d; font-size: 14px;">Papers</div>'
+            '</div>'
+            '<div style="text-align: center; padding: 15px; background: white; border-radius: 6px; border: 1px solid #dee2e6;">'
+            '<div style="font-size: 24px; font-weight: bold; color: #28a745;">{}</div>'
+            '<div style="color: #6c757d; font-size: 14px;">Users</div>'
+            '</div>'
+            '<div style="text-align: center; padding: 15px; background: white; border-radius: 6px; border: 1px solid #dee2e6;">'
+            '<div style="font-size: 24px; font-weight: bold; color: #ffc107;">{}</div>'
+            '<div style="color: #6c757d; font-size: 14px;">Reviews</div>'
+            '</div>'
             '</div>',
             paper_count, user_count, review_count
         )
+        
+        # Add recent activity
+        if recent_papers or recent_roles:
+            stats_html += format_html('<h5 style="color: #495057; margin-top: 20px;">Recent Activity</h5>')
+            
+            if recent_papers:
+                stats_html += format_html('<div style="margin-bottom: 15px;"><strong>Recent Papers:</strong></div>')
+                for paper in recent_papers:
+                    stats_html += format_html(
+                        '<div style="padding: 8px; background: white; border-radius: 4px; margin-bottom: 5px; border-left: 3px solid #007bff;">'
+                        '<strong>{}</strong> by {} ({})'
+                        '</div>',
+                        paper.title[:50] + "..." if len(paper.title) > 50 else paper.title,
+                        paper.author.get_full_name() or paper.author.username,
+                        paper.created_at.strftime('%Y-%m-%d')
+                    )
+            
+            if recent_roles:
+                stats_html += format_html('<div style="margin-top: 15px; margin-bottom: 15px;"><strong>Recent Users:</strong></div>')
+                for role in recent_roles:
+                    stats_html += format_html(
+                        '<div style="padding: 8px; background: white; border-radius: 4px; margin-bottom: 5px; border-left: 3px solid #28a745;">'
+                        '<strong>{}</strong> - {} ({})'
+                        '</div>',
+                        role.user.get_full_name() or role.user.username,
+                        role.get_role_display(),
+                        role.created_at.strftime('%Y-%m-%d')
+                    )
+        
+        return stats_html
     conference_stats.short_description = 'Statistics'
 
     actions = ['approve_selected_conferences', 'mark_as_upcoming', 'mark_as_live', 'mark_as_completed']

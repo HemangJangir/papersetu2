@@ -6,6 +6,7 @@ from django.conf.urls.static import static
 from django.views.generic import TemplateView
 from django.contrib.auth.decorators import login_required
 from conference.models import Conference, UserConferenceRole, SubreviewerInvite
+from .views import custom_404, custom_500, custom_403, health_check
 
 # Customize admin site
 admin.site.site_header = settings.ADMIN_SITE_HEADER
@@ -78,6 +79,7 @@ urlpatterns = [
     path('quick-start/', TemplateView.as_view(template_name='quick_start_guide.html'), name='quick_start'),
     path('', root_redirect, name='landing'),
     path('home/', homepage, name='homepage'),
+    path('health/', health_check, name='health_check'),
 ]
 
 # Serve static files in development and production
@@ -86,4 +88,9 @@ if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 else:
     # In production, serve static files through WhiteNoise
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) 
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Custom error handlers
+handler404 = 'conference_mgmt.views.custom_404'
+handler500 = 'conference_mgmt.views.custom_500'
+handler403 = 'conference_mgmt.views.custom_403' 
