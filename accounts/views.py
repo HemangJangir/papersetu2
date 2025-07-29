@@ -45,6 +45,25 @@ class CombinedAuthView(LoginView):
                 })
         else:
             # Handle login (default LoginView behavior)
+            # SAFETY NET: If user exists and password is correct but is_active/is_verified is False, fix and log in
+            username = request.POST.get('username')
+            password = request.POST.get('password')
+            user = None
+            if username and password:
+                try:
+                    user_obj = User.objects.get(username=username)
+                except User.DoesNotExist:
+                    try:
+                        user_obj = User.objects.get(email=username)
+                    except User.DoesNotExist:
+                        user_obj = None
+                if user_obj and user_obj.check_password(password):
+                    if not user_obj.is_active or not user_obj.is_verified:
+                        user_obj.is_active = True
+                        user_obj.is_verified = True
+                        user_obj.save()
+                        auth_login(request, user_obj)
+                        return redirect('dashboard:dashboard')
             return super().post(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
@@ -240,6 +259,8 @@ def password_reset_new(request):
             user.set_password(form.cleaned_data['new_password1'])
             user.otp = ''
             user.otp_created_at = None
+            user.is_active = True
+            user.is_verified = True
             user.save()
             # Clear session
             request.session.pop('reset_user_id', None)
