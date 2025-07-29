@@ -57,18 +57,82 @@ def verify_otp(request):
     user_id = request.session.get('pending_user_id')
     if not user_id:
         return redirect('accounts:login')
-    user = User.objects.get(id=user_id)
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        messages.error(request, 'Invalid verification session. Please try signing up again.')
+        return redirect('accounts:login')
+    
     if request.method == 'POST':
-        otp_input = request.POST.get('otp')
+        # Handle resend OTP
+        if 'resend_otp' in request.POST:
+            # Generate new OTP
+            otp = str(random.randint(100000, 999999))
+            user.otp = otp
+            user.otp_created_at = timezone.now()
+            user.save()
+            
+            # Send new OTP email
+            try:
+                send_mail(
+                    'Your OTP for PaperSetu Registration',
+                    f'Your new OTP is: {otp}',
+                    'noreply@papersetu.com',
+                    [user.email],
+                    fail_silently=False,
+                )
+                messages.success(request, 'New OTP has been sent to your email.')
+            except Exception as e:
+                messages.error(request, 'Failed to send OTP. Please try again later.')
+                user.otp = ''
+                user.otp_created_at = None
+                user.save()
+            
+            return render(request, 'accounts/verify_otp.html')
+        
+        # Handle OTP verification
+        otp_input = request.POST.get('otp', '').strip()
+        
+        # Check if OTP was provided
+        if not otp_input:
+            messages.error(request, 'Please enter the OTP sent to your email.')
+            return render(request, 'accounts/verify_otp.html')
+        
+        # Check if OTP is exactly 6 digits
+        if not otp_input.isdigit() or len(otp_input) != 6:
+            messages.error(request, 'Please enter a valid 6-digit OTP.')
+            return render(request, 'accounts/verify_otp.html')
+        
+        # Check if user has an OTP stored
+        if not user.otp:
+            messages.error(request, 'No OTP found. Please request a new OTP.')
+            return render(request, 'accounts/verify_otp.html')
+        
+        # Check if OTP has expired (10 minutes)
+        if user.otp_created_at and (timezone.now() - user.otp_created_at).total_seconds() > 600:
+            messages.error(request, 'OTP has expired. Please request a new OTP.')
+            user.otp = ''
+            user.save()
+            return render(request, 'accounts/verify_otp.html')
+        
+        # Verify OTP
         if otp_input == user.otp:
             user.is_active = True
             user.is_verified = True
             user.otp = ''
+            user.otp_created_at = None
             user.save()
+            
+            # Clear the session
+            if 'pending_user_id' in request.session:
+                del request.session['pending_user_id']
+            
             messages.success(request, 'Account verified! You can now log in.')
             return redirect('accounts:login')
         else:
             messages.error(request, 'Invalid OTP. Please try again.')
+    
     return render(request, 'accounts/verify_otp.html')
 
 def custom_logout(request):

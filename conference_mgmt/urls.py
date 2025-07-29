@@ -7,13 +7,14 @@ from django.views.generic import TemplateView
 from django.contrib.auth.decorators import login_required
 from conference.models import Conference, UserConferenceRole, SubreviewerInvite
 from .views import custom_404, custom_500, custom_403, health_check
+from accounts.decorators import verified_user_required
 
 # Customize admin site
 admin.site.site_header = settings.ADMIN_SITE_HEADER
 admin.site.site_title = settings.ADMIN_SITE_TITLE
 admin.site.index_title = settings.ADMIN_INDEX_TITLE
 
-@login_required
+@verified_user_required
 def homepage(request):
     from django.db.models import Q
     user = request.user
@@ -35,31 +36,16 @@ def homepage(request):
             user=user, 
             conference=conference
         ).values_list('role', flat=True))
-        if conference.chair == user and 'chair' not in conference.user_roles:
-            conference.user_roles = list(conference.user_roles) + ['chair']
-        # If user is subreviewer via invite, add 'subreviewer' to roles if not present
-        if SubreviewerInvite.objects.filter(paper__conference=conference, subreviewer=user, status__in=['invited', 'accepted']).exists():
-            if 'subreviewer' not in conference.user_roles:
-                conference.user_roles = list(conference.user_roles) + ['subreviewer']
-    # Conference search for homepage
-    search_query = request.GET.get('q', '').strip()
-    search_results = None
-    if search_query:
-        search_results = Conference.objects.filter(
-            is_approved=True, status__in=['upcoming', 'live']
-        ).filter(
-            Q(name__icontains=search_query) |
-            Q(acronym__icontains=search_query) |
-            Q(theme_domain__icontains=search_query) |
-            Q(venue__icontains=search_query) |
-            Q(city__icontains=search_query) |
-            Q(country__icontains=search_query)
-        )
+    
+    # Get live and upcoming conferences for browsing
+    live_upcoming_confs = Conference.objects.filter(
+        status__in=['live', 'upcoming'], 
+        is_approved=True
+    ).exclude(id__in=all_confs.values_list('id', flat=True))
+    
     context = {
-        'user': user,
         'user_conferences': all_confs,
-        'search_query': search_query,
-        'search_results': search_results,
+        'live_upcoming_confs': live_upcoming_confs,
     }
     return render(request, 'homepage.html', context)
 

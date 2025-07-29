@@ -42,6 +42,7 @@ from openpyxl import Workbook
 from django.utils.encoding import smart_str
 from conference.models import Conference, UserConferenceRole
 import csv
+from accounts.decorators import verified_user_required
 
 class PCSendEmailForm(forms.Form):
     RECIPIENT_TYPE_CHOICES = [
@@ -95,7 +96,7 @@ def render_placeholders(text, user=None, paper=None, conference=None, extra=None
         text = text.replace(f'{{{{{key}}}}}', str(value))
     return text
 
-@login_required
+@verified_user_required
 def dashboard(request):
     user = request.user
     # Determine roles
