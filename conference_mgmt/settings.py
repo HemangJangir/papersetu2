@@ -142,7 +142,7 @@ if os.environ.get('DATABASE_URL'):
     # ✅ Use PostgreSQL in production (Render)
     DATABASES = {
         'default': dj_database_url.config(
-            default=os.environ['postgresql://papersetu_db_user:aO4QO7mpTqer5K7SAcEhyG7Pc4QcYrSS@dpg-d24f7gjuibrs73akg2tg-a/papersetu_db'],
+            default=os.environ.get('DATABASE_URL'),
             conn_max_age=600
         )
     }
