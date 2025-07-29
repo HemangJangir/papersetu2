@@ -135,20 +135,27 @@ TEMPLATES = [
 WSGI_APPLICATION = 'conference_mgmt.wsgi.application'
 
 # Database configuration
+import os
+import dj_database_url
+
 if os.environ.get('DATABASE_URL'):
-    # Production database (PostgreSQL on Render)
-    import dj_database_url
+    # ✅ Use PostgreSQL in production (Render)
     DATABASES = {
-        'default': dj_database_url.parse(os.environ.get('DATABASE_URL'))
+        'default': dj_database_url.config(
+            default=os.environ['postgresql://papersetu_db_user:aO4QO7mpTqer5K7SAcEhyG7Pc4QcYrSS@dpg-d24f7gjuibrs73akg2tg-a/papersetu_db'],
+            conn_max_age=600
+        )
     }
 else:
-    # Development database (SQLite)
+    # ✅ Use SQLite in development (local)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {

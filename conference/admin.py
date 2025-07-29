@@ -32,7 +32,7 @@ class ConferenceStatusFilter(SimpleListFilter):
             return queryset.filter(status='completed')
 
 class ConferenceAdmin(admin.ModelAdmin):
-    list_display = ('name', 'acronym', 'chair_info', 'status_display', 'approval_status', 'dates_display', 'conference_actions')
+    list_display = ('name', 'acronym', 'chair_info', 'status', 'status_display', 'approval_status', 'dates_display', 'conference_actions')
     list_filter = (ConferenceStatusFilter, 'primary_area', 'start_date', 'is_approved', 'status')
     search_fields = ('name', 'acronym', 'chair__username', 'chair__email', 'chair__first_name', 'chair__last_name', 'theme_domain', 'venue', 'city')
     list_per_page = 25
