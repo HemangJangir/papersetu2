@@ -511,6 +511,15 @@ def pc_invite(request, conf_id):
                 else:
                     # Create invitation
                     token = get_random_string(48)
+                    
+                    # Create or get user account for the invited person
+                    from accounts.utils import get_or_create_invited_user
+                    user, created, action_taken = get_or_create_invited_user(
+                        email=email, 
+                        name=name, 
+                        role_type="PC Member"
+                    )
+                    
                     invite = PCInvite.objects.create(
                         conference=conference,
                         name=name,
@@ -519,10 +528,21 @@ def pc_invite(request, conf_id):
                         token=token,
                         track=track
                     )
-                    # Send email
+                    
+                    # Send invitation email
                     subject = f"PC Invitation for {conference.name}"
                     track_info = f"\nTrack: {track.name} ({track.track_id})" if track else ""
-                    body = f"""Dear {name},\n\nYou have been invited to serve as a Program Committee (PC) member for the conference \"{conference.name}\".{track_info}\n\nPlease click the following link to accept or decline this invitation:\n{settings.SITE_DOMAIN}{reverse('dashboard:pc_invite_accept', args=[token])}\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair"""
+                    
+                    # Customize message based on action taken
+                    if action_taken == 'created':
+                        password_info = f"\n\nA PaperSetu account has been created for you with username: {user.username}\nYou will receive a separate email to set your password."
+                    elif action_taken == 'exists_sent_reset':
+                        password_info = f"\n\nYou already have a PaperSetu account with username: {user.username}\nYou will receive a separate email to reset your password."
+                    else:
+                        password_info = f"\n\nYou already have a PaperSetu account with username: {user.username}"
+                    
+                    body = f"""Dear {name},\n\nYou have been invited to serve as a Program Committee (PC) member for the conference \"{conference.name}\".{track_info}{password_info}\n\nPlease click the following link to accept or decline this invitation:\n{settings.SITE_DOMAIN}{reverse('dashboard:pc_invite_accept', args=[token])}\n\nBest regards,\n{request.user.get_full_name() or request.user.username}\nConference Chair"""
+                    
                     from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', settings.EMAIL_HOST_USER)
                     try:
                         from django.core.mail import EmailMessage
@@ -533,7 +553,15 @@ def pc_invite(request, conf_id):
                             to=[email],
                         )
                         email_msg.send(fail_silently=False)
-                        message = f'Invitation sent successfully to {name} ({email}).'
+                        
+                        # Set success message based on action taken
+                        if action_taken == 'created':
+                            message = f'Invitation sent successfully to {name} ({email}). Account created and password reset email sent.'
+                        elif action_taken == 'exists_sent_reset':
+                            message = f'Invitation sent successfully to {name} ({email}). Password reset email sent to existing account.'
+                        else:
+                            message = f'Invitation sent successfully to {name} ({email}).'
+                        
                         message_type = 'success'
                         PCEmailLog.objects.create(
                             subject=subject,
@@ -560,7 +588,14 @@ def pc_invite(request, conf_id):
                                 server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
                                 server.send_message(msg)
                                 server.quit()
-                                message = f'Invitation sent successfully to {name} ({email}).'
+                                
+                                if action_taken == 'created':
+                                    message = f'Invitation sent successfully to {name} ({email}). Account created and password reset email sent.'
+                                elif action_taken == 'exists_sent_reset':
+                                    message = f'Invitation sent successfully to {name} ({email}). Password reset email sent to existing account.'
+                                else:
+                                    message = f'Invitation sent successfully to {name} ({email}).'
+                                
                                 message_type = 'success'
                             except Exception as e2:
                                 message = f'Failed to send invitation: {str(e2)}'

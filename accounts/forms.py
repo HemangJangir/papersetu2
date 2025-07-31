@@ -45,31 +45,48 @@ class UserRegistrationForm(UserCreationForm):
         existing_user = User.objects.filter(email=email).first()
         
         if existing_user:
-            # User already exists - prevent duplicate registration
+            # Check if this email has PC invites
             try:
                 from conference.models import PCInvite
                 pc_invites = PCInvite.objects.filter(email=email)
                 
                 if pc_invites.exists():
-                    # Get conference names for better error message
-                    conference_names = [invite.conference.name for invite in pc_invites]
-                    conferences_text = ', '.join(conference_names)
-                    raise forms.ValidationError(
-                        f'This email is already registered. You have PC member invitations for: {conferences_text}. '
-                        f'Please try logging in with your existing account, or use "Forgot Password" if needed.'
-                    )
+                    # Check if any invites are pending or accepted
+                    pending_invites = pc_invites.filter(status='pending')
+                    accepted_invites = pc_invites.filter(status='accepted')
+                    
+                    if pending_invites.exists():
+                        # User has pending invites - they should register to accept them
+                        conference_names = [invite.conference.name for invite in pending_invites]
+                        conferences_text = ', '.join(conference_names)
+                        raise forms.ValidationError(
+                            f'This email is already registered. However, you have pending PC member invitations for: {conferences_text}. '
+                            f'Please try logging in with your existing account, or contact the conference chairs if you need help.'
+                        )
+                    elif accepted_invites.exists():
+                        # User has accepted invites - they should login
+                        conference_names = [invite.conference.name for invite in accepted_invites]
+                        conferences_text = ', '.join(conference_names)
+                        raise forms.ValidationError(
+                            f'This email is already registered. You have accepted PC member invitations for: {conferences_text}. '
+                            f'Please try logging in with your existing account, or use "Forgot Password" if you need to reset your password.'
+                        )
+                    else:
+                        raise forms.ValidationError('A user with that email already exists. Please try logging in instead.')
                 else:
                     raise forms.ValidationError('A user with that email already exists. Please try logging in instead.')
             except ImportError:
+                # If conference app is not available, fall back to original error
                 raise forms.ValidationError('A user with that email already exists. Please try logging in instead.')
         
-        # If no existing user, check for PC invites to allow registration
+        # If no existing user, check if there are accepted PC invites that should allow registration
         try:
             from conference.models import PCInvite
-            pc_invites = PCInvite.objects.filter(email=email)
-            if pc_invites.exists():
-                # Store PC invites info for later linking during registration
-                self.pc_invites = pc_invites
+            accepted_invites = PCInvite.objects.filter(email=email, status='accepted')
+            if accepted_invites.exists():
+                # User has accepted invites but no account - allow registration
+                # Store this info in the form for later use
+                self.accepted_invites = accepted_invites
         except ImportError:
             pass
             

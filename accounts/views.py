@@ -77,7 +77,7 @@ class CombinedAuthView(LoginView):
             from django.utils import timezone
             
             # Get PC invites from form if available
-            pc_invites = getattr(form, 'pc_invites', None)
+            pc_invites = getattr(form, 'accepted_invites', None)
             
             if not pc_invites:
                 # Fallback: find PC invites for this email
