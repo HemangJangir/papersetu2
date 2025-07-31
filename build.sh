@@ -57,18 +57,53 @@ echo "📋 Checking migration status..."
 python manage.py showmigrations --list || echo "⚠️  Could not show migrations"
 
 # Run migrations with better error handling
-echo "🔄 Running database migrations..."
+echo "🔄 Running migrations..."
 python manage.py migrate --no-input --verbosity=2 || {
     echo "❌ Migration failed, trying with fake initial..."
     python manage.py migrate --fake-initial --no-input --verbosity=2 || {
-        echo "❌ Migration failed completely"
-        exit 1
+        echo "❌ Migration with fake initial failed, trying alternative approach..."
+        # Try running the quick fix script
+        python quick_fix_migrations.py || {
+            echo "❌ Quick fix failed, trying force migration..."
+            python force_migrate.py || {
+                echo "❌ All migration attempts failed"
+                exit 1
+            }
+        }
     }
 }
 
 # Verify migrations were applied
 echo "✅ Verifying migrations..."
 python manage.py showmigrations --list || echo "⚠️  Could not verify migrations"
+
+# Check if accounts_user table exists
+echo "🔍 Checking if accounts_user table exists..."
+python -c "
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'conference_mgmt.settings')
+django.setup()
+from django.db import connection
+with connection.cursor() as cursor:
+    cursor.execute(\"\"\"
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'accounts_user'
+        );
+    \"\"\")
+    result = cursor.fetchone()
+    if result and result[0]:
+        print('✅ accounts_user table exists')
+    else:
+        print('❌ accounts_user table does not exist - running quick fix...')
+        import subprocess
+        subprocess.run(['python', 'quick_fix_migrations.py'], check=True)
+" || {
+    echo "❌ Table check failed, running quick fix..."
+    python quick_fix_migrations.py || python force_migrate.py
+}
 
 # Setup admin interface (if command exists)
 echo "⚙️  Setting up admin interface..."
