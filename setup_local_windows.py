@@ -16,13 +16,10 @@ def check_python_version():
     print(f"🐍 Python version: {current_version.major}.{current_version.minor}.{current_version.micro}")
     
     if current_version.major == 3 and current_version.minor >= 13:
-        print("⚠️  WARNING: Python 3.13+ detected!")
-        print("   psycopg2 may have compatibility issues with Python 3.13+")
-        print("   For production deployment, use Python 3.11.9")
-        print("   Local development with SQLite should still work fine.")
-        return False
+        print("✅ Python 3.13+ detected - Compatible with psycopg3!")
+        return True
     elif current_version.major == 3 and current_version.minor == 11:
-        print("✅ Python 3.11 detected - Perfect for psycopg2 compatibility!")
+        print("✅ Python 3.11 detected - Compatible with psycopg3!")
         return True
     else:
         print("✅ Python version should work fine for local development")
@@ -71,20 +68,15 @@ def install_packages_windows():
         if not run_command(f"pip install {package}", f"Installing {package}"):
             print(f"⚠️  Failed to install {package}, but continuing...")
     
-    # Try to install psycopg2 (optional for local development)
+    # Try to install psycopg3 (optional for local development)
     print("\n🔄 Trying to install PostgreSQL adapter (optional for local development)...")
     try:
-        # Try psycopg2 first
-        subprocess.run("pip install psycopg2==2.9.9", shell=True, check=True, capture_output=True, text=True)
-        print("✅ psycopg2 installed successfully")
+        # Try psycopg3
+        subprocess.run("pip install psycopg[binary]==3.2.9", shell=True, check=True, capture_output=True, text=True)
+        print("✅ psycopg3 installed successfully")
     except subprocess.CalledProcessError:
-        try:
-            # Fallback to psycopg2-binary
-            subprocess.run("pip install psycopg2-binary==2.9.9", shell=True, check=True, capture_output=True, text=True)
-            print("✅ psycopg2-binary installed successfully")
-        except subprocess.CalledProcessError:
-            print("⚠️  PostgreSQL adapter installation failed (this is OK for local development with SQLite)")
-            print("💡 You can install it later if needed for production deployment")
+        print("⚠️  PostgreSQL adapter installation failed (this is OK for local development with SQLite)")
+        print("💡 You can install it later if needed for production deployment")
     
     return True
 
@@ -154,7 +146,7 @@ else:
     print("\n💡 Database: SQLite (db.sqlite3)")
     print("💡 Debug mode: Enabled")
     print("\n⚠️  Note: PostgreSQL adapter installation was attempted for local development.")
-    print("   For production deployment, ensure Python 3.11.9 is used.")
+    print("   For production deployment, psycopg3 is now compatible with Python 3.13+!")
     
     return True
 

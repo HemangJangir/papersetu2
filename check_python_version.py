@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Python Version Check Script for PaperSetu
-This script checks if the current Python version is compatible with psycopg2.
+This script checks if the current Python version is compatible with psycopg3.
 """
 
 import sys
@@ -9,7 +9,7 @@ import subprocess
 import platform
 
 def check_python_version():
-    """Check if Python version is compatible with psycopg2"""
+    """Check if Python version is compatible with psycopg3"""
     print("🐍 Python Version Compatibility Check")
     print("=" * 50)
     
@@ -20,44 +20,35 @@ def check_python_version():
     
     # Check compatibility
     if current_version.major == 3 and current_version.minor >= 13:
-        print("❌ WARNING: Python 3.13+ detected!")
-        print("   psycopg2 is not fully compatible with Python 3.13+")
-        print("   This may cause deployment issues on Render.")
-        print("\n💡 Recommendations:")
-        print("   1. Use Python 3.11.9 for production deployment")
-        print("   2. Update runtime.txt to specify python-3.11.9")
-        print("   3. Use psycopg2==2.9.9 in requirements.txt")
-        return False
+        print("✅ Python 3.13+ detected - Compatible with psycopg3!")
+        return True
     elif current_version.major == 3 and current_version.minor == 11:
-        print("✅ Python 3.11 detected - Perfect for psycopg2 compatibility!")
+        print("✅ Python 3.11 detected - Compatible with psycopg3!")
         return True
     elif current_version.major == 3 and current_version.minor == 12:
-        print("⚠️  Python 3.12 detected - Should work with psycopg2")
-        print("   But Python 3.11.9 is recommended for best compatibility")
+        print("✅ Python 3.12 detected - Compatible with psycopg3!")
         return True
     else:
         print("⚠️  Python version may have compatibility issues")
-        print("   Python 3.11.9 is recommended for this project")
+        print("   Python 3.11+ is recommended for this project")
         return False
 
-def check_psycopg2_installation():
-    """Check if psycopg2 is properly installed"""
-    print("\n🔍 Checking psycopg2 installation...")
+def check_psycopg3_installation():
+    """Check if psycopg3 is properly installed"""
+    print("\n🔍 Checking psycopg3 installation...")
     
     try:
-        import psycopg2
-        print("✅ psycopg2 imported successfully")
-        print(f"   Version: {psycopg2.__version__}")
+        import psycopg
+        print("✅ psycopg3 imported successfully")
+        print(f"   Version: {psycopg.__version__}")
         return True
     except ImportError as e:
-        print(f"❌ psycopg2 import failed: {e}")
-        print("\n💡 To install psycopg2:")
-        print("   pip install psycopg2==2.9.9")
-        print("   or")
-        print("   pip install psycopg2-binary==2.9.9")
+        print(f"❌ psycopg3 import failed: {e}")
+        print("\n💡 To install psycopg3:")
+        print("   pip install psycopg[binary]==3.2.9")
         return False
     except Exception as e:
-        print(f"⚠️  psycopg2 import warning: {e}")
+        print(f"⚠️  psycopg3 import warning: {e}")
         return True
 
 def check_django_database_config():
@@ -117,8 +108,8 @@ def main():
     # Check Python version
     version_ok = check_python_version()
     
-    # Check psycopg2 installation
-    psycopg2_ok = check_psycopg2_installation()
+    # Check psycopg3 installation
+    psycopg3_ok = check_psycopg3_installation()
     
     # Check Django configuration
     django_ok = check_django_database_config()
@@ -127,19 +118,19 @@ def main():
     print("📊 SUMMARY")
     print("=" * 50)
     
-    if version_ok and psycopg2_ok and django_ok:
+    if version_ok and psycopg3_ok and django_ok:
         print("🎉 All checks passed! Your environment is ready for deployment.")
         print("\n💡 For production deployment:")
-        print("   1. Ensure runtime.txt contains: python-3.11.9")
-        print("   2. Ensure requirements.txt contains: psycopg2==2.9.9")
-        print("   3. Set DATABASE_URL environment variable in Render")
+        print("   1. Ensure requirements.txt contains: psycopg[binary]==3.2.9")
+        print("   2. Set DATABASE_URL environment variable in Render")
+        print("   3. Python 3.13+ is now supported with psycopg3!")
     else:
         print("❌ Some checks failed. Please address the issues above.")
         print("\n🔧 Quick fixes:")
         if not version_ok:
-            print("   - Use Python 3.11.9 for deployment")
-        if not psycopg2_ok:
-            print("   - Install psycopg2: pip install psycopg2==2.9.9")
+            print("   - Python 3.11+ is recommended")
+        if not psycopg3_ok:
+            print("   - Install psycopg3: pip install psycopg[binary]==3.2.9")
         if not django_ok:
             print("   - Check Django settings and database configuration")
         
