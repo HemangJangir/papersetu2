@@ -56,18 +56,35 @@ python manage.py collectstatic --no-input --clear
 echo "📋 Checking migration status..."
 python manage.py showmigrations --list || echo "⚠️  Could not show migrations"
 
-# Run migrations with better error handling
-echo "🔄 Running migrations..."
+# Run migrations with multiple strategies
+echo "🔄 Running migrations with multiple strategies..."
+
+# Strategy 1: Normal migration
+echo "🔄 Strategy 1: Normal migration..."
 python manage.py migrate --no-input --verbosity=2 || {
-    echo "❌ Migration failed, trying with fake initial..."
+    echo "❌ Normal migration failed, trying Strategy 2..."
+    
+    # Strategy 2: Fake initial migration
+    echo "🔄 Strategy 2: Fake initial migration..."
     python manage.py migrate --fake-initial --no-input --verbosity=2 || {
-        echo "❌ Migration with fake initial failed, trying alternative approach..."
-        # Try running the quick fix script
-        python quick_fix_migrations.py || {
-            echo "❌ Quick fix failed, trying force migration..."
+        echo "❌ Fake initial migration failed, trying Strategy 3..."
+        
+        # Strategy 3: Sync database
+        echo "🔄 Strategy 3: Sync database..."
+        python manage.py migrate --run-syncdb --no-input --verbosity=2 || {
+            echo "❌ Sync database failed, trying Strategy 4..."
+            
+            # Strategy 4: Force migration script
+            echo "🔄 Strategy 4: Force migration script..."
             python force_migrate.py || {
-                echo "❌ All migration attempts failed"
-                exit 1
+                echo "❌ Force migration failed, trying Strategy 5..."
+                
+                # Strategy 5: Quick fix script
+                echo "🔄 Strategy 5: Quick fix script..."
+                python quick_fix_migrations.py || {
+                    echo "❌ All migration strategies failed"
+                    exit 1
+                }
             }
         }
     }
