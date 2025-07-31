@@ -6,7 +6,7 @@ from django.conf.urls.static import static
 from django.views.generic import TemplateView
 from django.contrib.auth.decorators import login_required
 from conference.models import Conference, UserConferenceRole, SubreviewerInvite
-from .views import custom_404, custom_500, custom_403, health_check, run_migrations, create_superuser, check_database, complete_migration
+from .views import custom_404, custom_500, custom_403, health_check, run_migrations, create_superuser, check_database, complete_migration, fix_missing_tables
 from accounts.decorators import verified_user_required
 
 # Customize admin site
@@ -14,7 +14,6 @@ admin.site.site_header = settings.ADMIN_SITE_HEADER
 admin.site.site_title = settings.ADMIN_SITE_TITLE
 admin.site.index_title = settings.ADMIN_INDEX_TITLE
 
-@verified_user_required
 def homepage(request):
     from django.db.models import Q
     user = request.user
@@ -72,6 +71,7 @@ urlpatterns = [
     path('create-superuser/', create_superuser, name='create_superuser'),
     path('check-database/', check_database, name='check_database'),
     path('complete-migration/', complete_migration, name='complete_migration'),
+    path('fix-missing-tables/', fix_missing_tables, name='fix_missing_tables'),
 ]
 
 # Serve static files in development and production

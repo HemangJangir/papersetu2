@@ -278,3 +278,50 @@ def complete_migration(request):
         </form>
         <p><strong>⚠️ IMPORTANT: Delete this view after use!</strong></p>
     """) 
+
+@csrf_exempt
+def fix_missing_tables(request):
+    """Temporary view to fix missing tables - DELETE AFTER USE"""
+    if request.method == 'POST':
+        try:
+            # Run the fix missing tables script
+            import subprocess
+            result = subprocess.run(['python', 'fix_missing_tables.py'], 
+                                  capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                return HttpResponse(f"""
+                    <h2>✅ Missing Tables Fixed Successfully!</h2>
+                    <pre style="background: #f0f0f0; padding: 10px; border-radius: 5px; max-height: 400px; overflow-y: auto;">{result.stdout}</pre>
+                    <p><a href="/check-database/">Check Database Status</a></p>
+                    <p><strong>⚠️ IMPORTANT: Delete this view after use!</strong></p>
+                """)
+            else:
+                return HttpResponse(f"""
+                    <h2>❌ Fix Missing Tables Failed</h2>
+                    <pre style="background: #f0f0f0; padding: 10px; border-radius: 5px; max-height: 400px; overflow-y: auto;">{result.stderr}</pre>
+                    <p><a href="/complete-migration/">Try Complete Migration</a></p>
+                    <p><strong>⚠️ IMPORTANT: Delete this view after use!</strong></p>
+                """)
+        except Exception as e:
+            return HttpResponse(f"""
+                <h2>❌ Fix Missing Tables Error</h2>
+                <p>Error: {str(e)}</p>
+                <p><a href="/complete-migration/">Try Complete Migration</a></p>
+                <p><strong>⚠️ IMPORTANT: Delete this view after use!</strong></p>
+            """)
+    
+    return HttpResponse("""
+        <h2>🔧 Fix Missing Tables</h2>
+        <p>This will specifically create the missing tables:</p>
+        <ul>
+            <li>accounts_emailverification</li>
+            <li>django_site</li>
+        </ul>
+        <form method="post">
+            <button type="submit" style="background: #ffc107; color: black; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                Fix Missing Tables
+            </button>
+        </form>
+        <p><strong>⚠️ IMPORTANT: Delete this view after use!</strong></p>
+    """) 
