@@ -40,8 +40,39 @@ class UserRegistrationForm(UserCreationForm):
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
-        if User.objects.filter(email=email).exists():
-            raise forms.ValidationError('A user with that email already exists.')
+        
+        # Check if user already exists
+        existing_user = User.objects.filter(email=email).first()
+        
+        if existing_user:
+            # User already exists - prevent duplicate registration
+            try:
+                from conference.models import PCInvite
+                pc_invites = PCInvite.objects.filter(email=email)
+                
+                if pc_invites.exists():
+                    # Get conference names for better error message
+                    conference_names = [invite.conference.name for invite in pc_invites]
+                    conferences_text = ', '.join(conference_names)
+                    raise forms.ValidationError(
+                        f'This email is already registered. You have PC member invitations for: {conferences_text}. '
+                        f'Please try logging in with your existing account, or use "Forgot Password" if needed.'
+                    )
+                else:
+                    raise forms.ValidationError('A user with that email already exists. Please try logging in instead.')
+            except ImportError:
+                raise forms.ValidationError('A user with that email already exists. Please try logging in instead.')
+        
+        # If no existing user, check for PC invites to allow registration
+        try:
+            from conference.models import PCInvite
+            pc_invites = PCInvite.objects.filter(email=email)
+            if pc_invites.exists():
+                # Store PC invites info for later linking during registration
+                self.pc_invites = pc_invites
+        except ImportError:
+            pass
+            
         return email
 
     def clean(self):

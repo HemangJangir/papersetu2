@@ -27,6 +27,10 @@ class CombinedAuthView(LoginView):
                 user.otp_created_at = timezone.now()
                 user.set_password(form.cleaned_data['password1'])
                 user.save()
+                
+                # Link PC invites to the newly created user
+                self.link_pc_invites(user, form)
+                
                 send_mail(
                     'Your OTP for PaperSetu Registration',
                     f'Your OTP is: {otp}',
@@ -65,6 +69,61 @@ class CombinedAuthView(LoginView):
                         auth_login(request, user_obj)
                         return redirect('dashboard:dashboard')
             return super().post(request, *args, **kwargs)
+
+    def link_pc_invites(self, user, form):
+        """Link PC invites to the newly created user"""
+        try:
+            from conference.models import PCInvite, UserConferenceRole
+            from django.utils import timezone
+            
+            # Get PC invites from form if available
+            pc_invites = getattr(form, 'pc_invites', None)
+            
+            if not pc_invites:
+                # Fallback: find PC invites for this email
+                pc_invites = PCInvite.objects.filter(email=user.email)
+            
+            for invite in pc_invites:
+                if invite.status == 'pending':
+                    # Scenario 2: User registers first, then accepts invite
+                    # Auto-accept the pending invite
+                    invite.status = 'accepted'
+                    invite.accepted_at = timezone.now()
+                    invite.save()
+                    
+                    # Create UserConferenceRole
+                    UserConferenceRole.objects.get_or_create(
+                        user=user,
+                        conference=invite.conference,
+                        role='pc_member',
+                        track=invite.track
+                    )
+                    
+                    # Send notification to chair
+                    try:
+                        from conference.models import Notification
+                        Notification.objects.create(
+                            recipient=invite.invited_by,
+                            notification_type='reviewer_response',
+                            title=f'PC Member Accepted Invitation',
+                            message=f'{user.get_full_name()} ({user.email}) has accepted the PC member invitation for {invite.conference.name}.',
+                            related_conference=invite.conference
+                        )
+                    except:
+                        pass  # Don't fail if notification creation fails
+                
+                elif invite.status == 'accepted':
+                    # Scenario 1: User accepted invite first, then registers
+                    # Just create the UserConferenceRole
+                    UserConferenceRole.objects.get_or_create(
+                        user=user,
+                        conference=invite.conference,
+                        role='pc_member',
+                        track=invite.track
+                    )
+                    
+        except ImportError:
+            pass  # Don't fail if conference app is not available
 
     def get(self, request, *args, **kwargs):
         return render(request, self.template_name, {
