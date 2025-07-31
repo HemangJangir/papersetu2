@@ -10,6 +10,24 @@ import subprocess
 import django
 from pathlib import Path
 
+def check_python_version():
+    """Check if Python version is compatible"""
+    current_version = sys.version_info
+    print(f"🐍 Python version: {current_version.major}.{current_version.minor}.{current_version.micro}")
+    
+    if current_version.major == 3 and current_version.minor >= 13:
+        print("⚠️  WARNING: Python 3.13+ detected!")
+        print("   psycopg2 may have compatibility issues with Python 3.13+")
+        print("   For production deployment, use Python 3.11.9")
+        print("   Local development with SQLite should still work fine.")
+        return False
+    elif current_version.major == 3 and current_version.minor == 11:
+        print("✅ Python 3.11 detected - Perfect for psycopg2 compatibility!")
+        return True
+    else:
+        print("✅ Python version should work fine for local development")
+        return True
+
 def run_command(command, description):
     """Run a command and handle errors"""
     print(f"\n🔄 {description}...")
@@ -53,20 +71,29 @@ def install_packages_windows():
         if not run_command(f"pip install {package}", f"Installing {package}"):
             print(f"⚠️  Failed to install {package}, but continuing...")
     
-    # Try to install psycopg2-binary (optional for local development)
+    # Try to install psycopg2 (optional for local development)
     print("\n🔄 Trying to install PostgreSQL adapter (optional for local development)...")
     try:
-        subprocess.run("pip install psycopg2-binary==2.9.9", shell=True, check=True, capture_output=True, text=True)
-        print("✅ PostgreSQL adapter installed successfully")
+        # Try psycopg2 first
+        subprocess.run("pip install psycopg2==2.9.9", shell=True, check=True, capture_output=True, text=True)
+        print("✅ psycopg2 installed successfully")
     except subprocess.CalledProcessError:
-        print("⚠️  PostgreSQL adapter installation failed (this is OK for local development with SQLite)")
-        print("💡 You can install it later if needed for production deployment")
+        try:
+            # Fallback to psycopg2-binary
+            subprocess.run("pip install psycopg2-binary==2.9.9", shell=True, check=True, capture_output=True, text=True)
+            print("✅ psycopg2-binary installed successfully")
+        except subprocess.CalledProcessError:
+            print("⚠️  PostgreSQL adapter installation failed (this is OK for local development with SQLite)")
+            print("💡 You can install it later if needed for production deployment")
     
     return True
 
 def setup_local_environment():
     """Set up local development environment"""
     print("🚀 Setting up PaperSetu for local development on Windows...")
+    
+    # Check Python version
+    check_python_version()
     
     # Check if we're in the right directory
     if not os.path.exists('manage.py'):
@@ -126,8 +153,8 @@ else:
     print("3. Login with admin/admin123")
     print("\n💡 Database: SQLite (db.sqlite3)")
     print("💡 Debug mode: Enabled")
-    print("\n⚠️  Note: PostgreSQL adapter installation was skipped for local development.")
-    print("   It will be installed automatically when deploying to production.")
+    print("\n⚠️  Note: PostgreSQL adapter installation was attempted for local development.")
+    print("   For production deployment, ensure Python 3.11.9 is used.")
     
     return True
 

@@ -3,6 +3,11 @@
 set -o errexit
 
 echo "🚀 Starting PaperSetu deployment build..."
+echo "🐍 Using Python 3.11.9 for psycopg2 compatibility..."
+
+# Check Python version
+echo "📋 Python version check..."
+python --version
 
 # Install dependencies
 echo "📦 Installing dependencies..."
@@ -18,6 +23,11 @@ mkdir -p media
 echo "🔍 Checking database configuration..."
 if [ -n "$DATABASE_URL" ]; then
     echo "✅ Using PostgreSQL (Production)"
+    echo "🔧 Verifying psycopg2 installation..."
+    python -c "import psycopg2; print('✅ psycopg2 imported successfully')" || {
+        echo "❌ psycopg2 import failed, trying alternative installation..."
+        pip install psycopg2-binary==2.9.9
+    }
 else
     echo "⚠️  No DATABASE_URL found - using SQLite (Development)"
 fi
