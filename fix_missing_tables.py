@@ -61,27 +61,9 @@ def create_missing_tables():
         except Exception as e:
             print(f"❌ Error creating accounts_emailverification: {e}")
     
-    # Create django_site table if missing
+    # Skip django_site table since sites app is not installed
     if not django_site_exists:
-        print("Creating django_site table...")
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    CREATE TABLE django_site (
-                        id SERIAL PRIMARY KEY,
-                        domain VARCHAR(100) NOT NULL UNIQUE,
-                        name VARCHAR(50) NOT NULL
-                    );
-                """)
-                # Insert default site
-                cursor.execute("""
-                    INSERT INTO django_site (domain, name) 
-                    VALUES ('papersetu2.onrender.com', 'PaperSetu')
-                    ON CONFLICT (domain) DO NOTHING;
-                """)
-                print("✅ django_site table created with default site")
-        except Exception as e:
-            print(f"❌ Error creating django_site: {e}")
+        print("⚠️  Skipping django_site table creation - django.contrib.sites not in INSTALLED_APPS")
     
     # Run specific migrations for these apps
     print("\n🔄 Running specific migrations...")
@@ -91,11 +73,8 @@ def create_missing_tables():
     except Exception as e:
         print(f"⚠️  accounts migration failed: {e}")
     
-    try:
-        execute_from_command_line(['manage.py', 'migrate', 'sites', '--no-input'])
-        print("✅ sites migrations completed")
-    except Exception as e:
-        print(f"⚠️  sites migration failed: {e}")
+    # Skip sites migration since sites app is not installed
+    print("⚠️  Skipping sites migration - django.contrib.sites not in INSTALLED_APPS")
 
 def check_tables_after_fix():
     """Check if tables exist after fix"""
@@ -110,20 +89,11 @@ def check_tables_after_fix():
             );
         """)
         email_verification_exists = cursor.fetchone()[0]
-        
-        cursor.execute("""
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_schema = 'public' 
-                AND table_name = 'django_site'
-            );
-        """)
-        django_site_exists = cursor.fetchone()[0]
     
     print(f"accounts_emailverification: {'✅ Exists' if email_verification_exists else '❌ Missing'}")
-    print(f"django_site: {'✅ Exists' if django_site_exists else '❌ Missing'}")
+    print("django_site: ⚠️  Skipped (not needed - sites app not installed)")
     
-    return email_verification_exists and django_site_exists
+    return email_verification_exists
 
 def main():
     print("🚀 Fix Missing Tables Script")

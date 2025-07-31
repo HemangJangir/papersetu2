@@ -313,11 +313,11 @@ def fix_missing_tables(request):
     
     return HttpResponse("""
         <h2>🔧 Fix Missing Tables</h2>
-        <p>This will specifically create the missing tables:</p>
+        <p>This will specifically create the missing table:</p>
         <ul>
             <li>accounts_emailverification</li>
-            <li>django_site</li>
         </ul>
+        <p><em>Note: django_site table is not needed since django.contrib.sites is not installed.</em></p>
         <form method="post">
             <button type="submit" style="background: #ffc107; color: black; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
                 Fix Missing Tables
