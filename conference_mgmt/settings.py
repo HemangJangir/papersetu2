@@ -138,20 +138,41 @@ WSGI_APPLICATION = 'conference_mgmt.wsgi.application'
 import os
 import dj_database_url
 
-if os.environ.get('DATABASE_URL'):
+# Check if we're in production (Render) or development
+IS_PRODUCTION = os.environ.get('DATABASE_URL') is not None
+
+if IS_PRODUCTION:
     # ✅ Use PostgreSQL in production (Render)
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=os.environ.get('DATABASE_URL'),
-            conn_max_age=600
-        )
-    }
+    try:
+        DATABASES = {
+            'default': dj_database_url.config(
+                default=os.environ.get('DATABASE_URL'),
+                conn_max_age=600,
+                conn_health_checks=True,
+            )
+        }
+        # Additional PostgreSQL-specific settings
+        DATABASES['default']['OPTIONS'] = {
+            'sslmode': 'require',
+        }
+    except Exception as e:
+        print(f"Error configuring PostgreSQL: {e}")
+        # Fallback to SQLite if PostgreSQL fails
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
 else:
     # ✅ Use SQLite in development (local)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 20,  # SQLite timeout
+            }
         }
     }
 
