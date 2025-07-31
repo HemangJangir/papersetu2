@@ -137,32 +137,144 @@ def check_database(request):
             result = cursor.fetchone()
             db_connected = result and result[0] == 1
             
-            # Check if accounts_user table exists
+            # Get ALL tables in the database
             cursor.execute("""
-                SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
-                    WHERE table_schema = 'public' 
-                    AND table_name = 'accounts_user'
-                );
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public'
+                ORDER BY table_name;
             """)
-            result = cursor.fetchone()
-            table_exists = result and result[0]
+            all_tables = [row[0] for row in cursor.fetchall()]
+            
+            # Check specific important tables
+            important_tables = [
+                'accounts_user',
+                'accounts_emailverification',
+                'conference_conference',
+                'conference_paper',
+                'conference_review',
+                'conference_userconferencerole',
+                'conference_track',
+                'conference_subreviewerinvite',
+                'conference_pcinvite',
+                'conference_registrationapplication',
+                'django_migrations',
+                'django_content_type',
+                'django_admin_log',
+                'django_session',
+                'django_site'
+            ]
+            
+            table_status = {}
+            for table in important_tables:
+                table_status[table] = table in all_tables
             
             # Check if admin user exists
             User = get_user_model()
             admin_exists = User.objects.filter(username='admin').exists()
             
-            return HttpResponse(f"""
-                <h2>🔍 Database Status Check</h2>
+            # Create detailed status report
+            status_html = f"""
+                <h2>🔍 Complete Database Status Check</h2>
                 <p><strong>Database Connected:</strong> {'✅ Yes' if db_connected else '❌ No'}</p>
-                <p><strong>accounts_user Table:</strong> {'✅ Exists' if table_exists else '❌ Missing'}</p>
+                <p><strong>Total Tables Found:</strong> {len(all_tables)}</p>
                 <p><strong>Admin User:</strong> {'✅ Exists' if admin_exists else '❌ Missing'}</p>
+                
+                <h3>📋 Important Tables Status:</h3>
+                <table border="1" style="border-collapse: collapse; width: 100%; margin: 10px 0;">
+                    <tr style="background-color: #f0f0f0;">
+                        <th style="padding: 8px;">Table Name</th>
+                        <th style="padding: 8px;">Status</th>
+                    </tr>
+            """
+            
+            for table in important_tables:
+                status = "✅ Exists" if table_status[table] else "❌ Missing"
+                color = "green" if table_status[table] else "red"
+                status_html += f"""
+                    <tr>
+                        <td style="padding: 8px;">{table}</td>
+                        <td style="padding: 8px; color: {color};">{status}</td>
+                    </tr>
+                """
+            
+            status_html += """
+                </table>
+                
+                <h3>🗄️ All Tables in Database:</h3>
+                <div style="background-color: #f9f9f9; padding: 10px; border-radius: 5px; max-height: 300px; overflow-y: auto;">
+            """
+            
+            if all_tables:
+                for table in all_tables:
+                    status_html += f"<div>• {table}</div>"
+            else:
+                status_html += "<div>No tables found!</div>"
+            
+            status_html += """
+                </div>
+                
                 <br>
-                <p><a href="/run-migrations/">Run Migrations</a> | <a href="/create-superuser/">Create Superuser</a></p>
+                <p><a href="/run-migrations/">🔄 Run Migrations</a> | <a href="/create-superuser/">👤 Create Superuser</a></p>
                 <p><strong>⚠️ IMPORTANT: Delete this view after use!</strong></p>
-            """)
+            """
+            
+            return HttpResponse(status_html)
+            
     except Exception as e:
         return HttpResponse(f"""
             <h2>❌ Database Check Error</h2>
             <p>Error: {str(e)}</p>
-        """) 
+            <p><a href="/run-migrations/">🔄 Run Migrations</a></p>
+        """)
+
+@csrf_exempt
+def complete_migration(request):
+    """Temporary view to run complete migration - DELETE AFTER USE"""
+    if request.method == 'POST':
+        try:
+            # Run the complete migration script
+            import subprocess
+            result = subprocess.run(['python', 'complete_migration.py'], 
+                                  capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                return HttpResponse(f"""
+                    <h2>✅ Complete Migration Successful!</h2>
+                    <pre style="background: #f0f0f0; padding: 10px; border-radius: 5px; max-height: 400px; overflow-y: auto;">{result.stdout}</pre>
+                    <p><a href="/check-database/">Check Database Status</a></p>
+                    <p><a href="/create-superuser/">Create Superuser</a></p>
+                    <p><strong>⚠️ IMPORTANT: Delete this view after use!</strong></p>
+                """)
+            else:
+                return HttpResponse(f"""
+                    <h2>❌ Complete Migration Failed</h2>
+                    <pre style="background: #f0f0f0; padding: 10px; border-radius: 5px; max-height: 400px; overflow-y: auto;">{result.stderr}</pre>
+                    <p><a href="/run-migrations/">Try Simple Migration</a></p>
+                    <p><strong>⚠️ IMPORTANT: Delete this view after use!</strong></p>
+                """)
+        except Exception as e:
+            return HttpResponse(f"""
+                <h2>❌ Complete Migration Error</h2>
+                <p>Error: {str(e)}</p>
+                <p><a href="/run-migrations/">Try Simple Migration</a></p>
+                <p><strong>⚠️ IMPORTANT: Delete this view after use!</strong></p>
+            """)
+    
+    return HttpResponse("""
+        <h2>🚀 Complete Migration</h2>
+        <p>This will run a comprehensive migration to ensure ALL tables from your local server are created in PostgreSQL.</p>
+        <p><strong>This includes:</strong></p>
+        <ul>
+            <li>All accounts tables (user, email verification)</li>
+            <li>All conference tables (conference, paper, review, etc.)</li>
+            <li>All dashboard tables</li>
+            <li>All Django core tables</li>
+        </ul>
+        <form method="post">
+            <button type="submit" style="background: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                Run Complete Migration
+            </button>
+        </form>
+        <p><strong>⚠️ IMPORTANT: Delete this view after use!</strong></p>
+    """) 
