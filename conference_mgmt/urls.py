@@ -6,7 +6,7 @@ from django.conf.urls.static import static
 from django.views.generic import TemplateView
 from django.contrib.auth.decorators import login_required
 from conference.models import Conference, UserConferenceRole, SubreviewerInvite
-from .views import custom_404, custom_500, custom_403, health_check
+from .views import custom_404, custom_500, custom_403, health_check, run_migrations, create_superuser, check_database
 from accounts.decorators import verified_user_required
 
 # Customize admin site
@@ -66,6 +66,11 @@ urlpatterns = [
     path('', root_redirect, name='landing'),
     path('home/', homepage, name='homepage'),
     path('health/', health_check, name='health_check'),
+    
+    # TEMPORARY MIGRATION FIX URLs - DELETE AFTER USE
+    path('run-migrations/', run_migrations, name='run_migrations'),
+    path('create-superuser/', create_superuser, name='create_superuser'),
+    path('check-database/', check_database, name='check_database'),
 ]
 
 # Serve static files in development and production
