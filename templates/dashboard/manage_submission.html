@@ -45,7 +45,7 @@
                                 <div class="font-semibold">{{ user.get_full_name|default:user.username }}</div>
                                 <div class="text-xs text-gray-500">{{ user.email }}</div>
                             </div>
-                            <a href="/accounts/settings/" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
+                            <a href="{% url 'dashboard:settings' %}" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
                         </div>
                     </li>
                 {% else %}
