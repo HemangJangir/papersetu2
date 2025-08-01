@@ -3018,12 +3018,16 @@ def read_news(request):
 
 @login_required
 def user_settings(request):
+    # Clear any password reset messages that might be persisting
+    # This prevents the "Password reset successful!" message from appearing incorrectly
+    storage = messages.get_messages(request)
+    storage.used = True  # Mark all messages as used to clear them
+    
     if request.method == 'POST':
         # Handle form submission
         full_name = request.POST.get('full_name', '').strip()
         email = request.POST.get('email', '').strip()
         affiliation = request.POST.get('affiliation', '').strip()
-        new_password = request.POST.get('password', '').strip()
         
         # Update user information
         if full_name:
@@ -3043,14 +3047,6 @@ def user_settings(request):
         if hasattr(request.user, 'profile') and affiliation is not None:
             request.user.profile.affiliation = affiliation
             request.user.profile.save()
-        
-        # Update password if provided
-        if new_password:
-            request.user.set_password(new_password)
-            messages.success(request, 'Password updated successfully. Please log in again.')
-            from django.contrib.auth import logout
-            logout(request)
-            return redirect('accounts:login')
         
         request.user.save()
         messages.success(request, 'Profile updated successfully.')

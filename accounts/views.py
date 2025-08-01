@@ -203,6 +203,37 @@ def verify_otp(request):
             user.otp_created_at = None
             user.save()
             
+            # Send welcome email
+            try:
+                subject = 'Welcome to PaperSetu!'
+                message = f'''
+Hello {user.get_full_name() or user.username},
+
+Welcome to PaperSetu! Your account has been successfully created and verified.
+
+We're excited to have you join our community of researchers and academics. With PaperSetu, you can:
+
+• Submit papers to conferences
+• Review submissions as a PC member
+• Manage conference proceedings
+• Connect with the academic community
+
+If you have any questions or need assistance, please don't hesitate to contact us.
+
+Best regards,
+The PaperSetu Team
+                '''
+                send_mail(
+                    subject,
+                    message,
+                    'noreply@papersetu.com',
+                    [user.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                # Don't fail the registration if email fails
+                pass
+            
             # Clear the session
             if 'pending_user_id' in request.session:
                 del request.session['pending_user_id']
