@@ -88,19 +88,23 @@
                     <select name="paper_id" id="paperTitleSelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" required>
                         <option value="">Choose a paper...</option>
                         {% for paper in papers %}
-                            <option value="{{ paper.id }}" data-paper-id="{{ paper.paper_id }}">{{ paper.title }}</option>
+                            <option value="{{ paper.id }}" data-paper-id="{{ paper.paper_id }}" data-track-id="{{ paper.track.id|default:'' }}">{{ paper.title }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <!-- Paper ID Input -->
+                <!-- Paper ID Selection -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-hashtag text-gray-500 mr-2"></i>
-                        Enter Paper ID
+                        Select Paper ID
                     </label>
-                    <input type="text" name="paper_id_input" id="paperIdInput" placeholder="Enter paper ID" 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" required>
+                    <select name="paper_id_input" id="paperIdSelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" required>
+                        <option value="">Choose a paper ID...</option>
+                        {% for paper in papers %}
+                            <option value="{{ paper.paper_id }}" data-paper-title="{{ paper.title }}">{{ paper.paper_id }}</option>
+                        {% endfor %}
+                    </select>
                     <div id="paperIdError" class="text-red-500 text-sm mt-1 hidden">Paper ID does not match the selected paper title.</div>
                 </div>
             </div>
@@ -374,35 +378,66 @@ checkboxes.forEach(cb => {
 
 // Paper ID validation
 const paperTitleSelect = document.getElementById('paperTitleSelect');
-const paperIdInput = document.getElementById('paperIdInput');
+const paperIdSelect = document.getElementById('paperIdSelect');
 const paperIdError = document.getElementById('paperIdError');
 const submitButton = document.querySelector('button[type="submit"]');
 
 function validatePaperId() {
-    const selectedOption = paperTitleSelect.options[paperTitleSelect.selectedIndex];
-    const expectedPaperId = selectedOption.getAttribute('data-paper-id');
-    const enteredPaperId = paperIdInput.value.trim();
+    const selectedTitleOption = paperTitleSelect.options[paperTitleSelect.selectedIndex];
+    const selectedIdOption = paperIdSelect.options[paperIdSelect.selectedIndex];
     
-    if (selectedOption.value && enteredPaperId) {
-        if (expectedPaperId === enteredPaperId) {
+    if (selectedTitleOption.value && selectedIdOption.value) {
+        const expectedPaperId = selectedTitleOption.getAttribute('data-paper-id');
+        const selectedPaperId = selectedIdOption.value;
+        
+        if (expectedPaperId === selectedPaperId) {
             paperIdError.classList.add('hidden');
-            paperIdInput.classList.remove('border-red-500');
-            paperIdInput.classList.add('border-green-500');
+            paperIdSelect.classList.remove('border-red-500');
+            paperIdSelect.classList.add('border-green-500');
             submitButton.disabled = false;
         } else {
             paperIdError.classList.remove('hidden');
-            paperIdInput.classList.add('border-red-500');
-            paperIdInput.classList.remove('border-green-500');
+            paperIdSelect.classList.add('border-red-500');
+            paperIdSelect.classList.remove('border-green-500');
             submitButton.disabled = true;
         }
     } else {
         paperIdError.classList.add('hidden');
-        paperIdInput.classList.remove('border-red-500', 'border-green-500');
+        paperIdSelect.classList.remove('border-red-500', 'border-green-500');
         submitButton.disabled = false;
     }
 }
 
+function updatePaperIdOptions() {
+    const selectedTrack = document.querySelector('select[name="track"]').value;
+    const paperIdSelect = document.getElementById('paperIdSelect');
+    
+    // Clear current options
+    paperIdSelect.innerHTML = '<option value="">Choose a paper ID...</option>';
+    
+    // Get all paper options
+    const paperOptions = document.querySelectorAll('#paperTitleSelect option[data-paper-id]');
+    
+    paperOptions.forEach(option => {
+        const paperId = option.getAttribute('data-paper-id');
+        const paperTitle = option.textContent;
+        const paperTrack = option.getAttribute('data-track-id') || '';
+        
+        // If track is selected, only show papers from that track
+        if (!selectedTrack || paperTrack === selectedTrack) {
+            const newOption = document.createElement('option');
+            newOption.value = paperId;
+            newOption.textContent = paperId;
+            newOption.setAttribute('data-paper-title', paperTitle);
+            paperIdSelect.appendChild(newOption);
+        }
+    });
+    
+    validatePaperId();
+}
+
 paperTitleSelect.addEventListener('change', validatePaperId);
-paperIdInput.addEventListener('input', validatePaperId);
+paperIdSelect.addEventListener('change', validatePaperId);
+document.querySelector('select[name="track"]').addEventListener('change', updatePaperIdOptions);
 </script>
 {% endblock %} 
