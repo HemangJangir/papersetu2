@@ -83,16 +83,29 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-file-alt text-gray-500 mr-2"></i>
-                        Select Paper
+                        Select Paper Title
                     </label>
-                    <select name="paper_id" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" required>
+                    <select name="paper_id" id="paperTitleSelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" required>
                         <option value="">Choose a paper...</option>
                         {% for paper in papers %}
-                            <option value="{{ paper.id }}">{{ paper.title }}</option>
+                            <option value="{{ paper.id }}" data-paper-id="{{ paper.paper_id }}">{{ paper.title }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
+                <!-- Paper ID Input -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-hashtag text-gray-500 mr-2"></i>
+                        Enter Paper ID
+                    </label>
+                    <input type="text" name="paper_id_input" id="paperIdInput" placeholder="Enter paper ID" 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" required>
+                    <div id="paperIdError" class="text-red-500 text-sm mt-1 hidden">Paper ID does not match the selected paper title.</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Track Selection -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -358,5 +371,38 @@ checkboxes.forEach(cb => {
         bulkList.value = selectedUsers.map(u => `${u.name} <${u.email}>`).join('\n');
     });
 });
+
+// Paper ID validation
+const paperTitleSelect = document.getElementById('paperTitleSelect');
+const paperIdInput = document.getElementById('paperIdInput');
+const paperIdError = document.getElementById('paperIdError');
+const submitButton = document.querySelector('button[type="submit"]');
+
+function validatePaperId() {
+    const selectedOption = paperTitleSelect.options[paperTitleSelect.selectedIndex];
+    const expectedPaperId = selectedOption.getAttribute('data-paper-id');
+    const enteredPaperId = paperIdInput.value.trim();
+    
+    if (selectedOption.value && enteredPaperId) {
+        if (expectedPaperId === enteredPaperId) {
+            paperIdError.classList.add('hidden');
+            paperIdInput.classList.remove('border-red-500');
+            paperIdInput.classList.add('border-green-500');
+            submitButton.disabled = false;
+        } else {
+            paperIdError.classList.remove('hidden');
+            paperIdInput.classList.add('border-red-500');
+            paperIdInput.classList.remove('border-green-500');
+            submitButton.disabled = true;
+        }
+    } else {
+        paperIdError.classList.add('hidden');
+        paperIdInput.classList.remove('border-red-500', 'border-green-500');
+        submitButton.disabled = false;
+    }
+}
+
+paperTitleSelect.addEventListener('change', validatePaperId);
+paperIdInput.addEventListener('input', validatePaperId);
 </script>
 {% endblock %} 

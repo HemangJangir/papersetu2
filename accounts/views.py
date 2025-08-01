@@ -331,11 +331,14 @@ The PaperSetu Team
             if 'login_verification' in request.session:
                 del request.session['login_verification']
             
-            # Automatically log the user in with explicit backend
-            auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            # Clear the session
+            if 'pending_user_id' in request.session:
+                del request.session['pending_user_id']
+            if 'login_verification' in request.session:
+                del request.session['login_verification']
             
-            messages.success(request, 'Account verified successfully! Welcome to PaperSetu.')
-            return redirect('dashboard:dashboard')
+            messages.success(request, 'Account verified successfully! You can now log in.')
+            return redirect('accounts:login')
         else:
             messages.error(request, 'Invalid OTP. Please try again.')
     

@@ -1978,6 +1978,7 @@ def subreviewers(request, conf_id):
         action = request.POST.get('action')
         if action == 'invite':
             paper_id = request.POST.get('paper_id')
+            paper_id_input = request.POST.get('paper_id_input', '').strip()
             user_id = request.POST.get('user_id')
             email = request.POST.get('email')
             template_body = request.POST.get('template_body')
@@ -1988,6 +1989,38 @@ def subreviewers(request, conf_id):
                     track = tracks.get(id=track_id)
                 except Exception:
                     track = None
+            
+            # Validate paper ID
+            if paper_id and paper_id_input:
+                try:
+                    paper = Paper.objects.get(id=paper_id)
+                    if paper.paper_id != paper_id_input:
+                        message = f"Paper ID '{paper_id_input}' does not match the selected paper title. Expected: {paper.paper_id}"
+                        message_type = 'error'
+                        return render(request, 'dashboard/subreviewers.html', {
+                            'conference': conference,
+                            'papers': papers,
+                            'tracks': tracks,
+                            'all_users': all_users,
+                            'invites': invites,
+                            'message': message,
+                            'message_type': message_type,
+                            'default_template': default_template
+                        })
+                except Paper.DoesNotExist:
+                    message = "Selected paper not found."
+                    message_type = 'error'
+                    return render(request, 'dashboard/subreviewers.html', {
+                        'conference': conference,
+                        'papers': papers,
+                        'tracks': tracks,
+                        'all_users': all_users,
+                        'invites': invites,
+                        'message': message,
+                        'message_type': message_type,
+                        'default_template': default_template
+                    })
+            
             # If not specified, use the paper's track
             if not track and paper_id:
                 try:
