@@ -35,8 +35,9 @@ class CombinedAuthView(LoginView):
                             'show_signup': True
                         })
                     
-                    # If user exists but is not verified, delete the old user
+                    # If user exists but is not verified, allow re-registration by deleting the old user
                     existing_user.delete()
+                    messages.info(request, 'Previous unverified registration found. Creating new registration.')
                     
                 except User.DoesNotExist:
                     # No existing user, proceed normally
@@ -330,8 +331,9 @@ The PaperSetu Team
             if 'login_verification' in request.session:
                 del request.session['login_verification']
             
-            # Automatically log the user in
-            auth_login(request, user)
+            # Automatically log the user in with explicit backend
+            auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            
             messages.success(request, 'Account verified successfully! Welcome to PaperSetu.')
             return redirect('dashboard:dashboard')
         else:

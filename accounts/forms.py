@@ -77,16 +77,19 @@ class UserRegistrationForm(UserCreationForm):
                     if existing_user.is_verified:
                         raise forms.ValidationError('A user with that email already exists. Please try logging in instead.')
                     else:
-                        # User exists but is not verified - allow re-registration
-                        # The view will handle deleting the old user
-                        return email
+                        # User exists but is not verified - show helpful message
+                        raise forms.ValidationError(
+                            'This email is already registered but not verified. Please try logging in with your existing account to complete verification, or contact support if you need help.'
+                        )
             except ImportError:
                 # If conference app is not available, fall back to original error
                 if existing_user.is_verified:
                     raise forms.ValidationError('A user with that email already exists. Please try logging in instead.')
                 else:
-                    # User exists but is not verified - allow re-registration
-                    return email
+                    # User exists but is not verified - show helpful message
+                    raise forms.ValidationError(
+                        'This email is already registered but not verified. Please try logging in with your existing account to complete verification, or contact support if you need help.'
+                    )
         
         # If no existing user, check if there are accepted PC invites that should allow registration
         try:
