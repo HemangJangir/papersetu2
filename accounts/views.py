@@ -20,8 +20,32 @@ class CombinedAuthView(LoginView):
             # Handle sign up
             form = UserRegistrationForm(request.POST)
             if form.is_valid():
+                email = form.cleaned_data['email']
+                
+                # Check if user with this email already exists
+                try:
+                    existing_user = User.objects.get(email=email)
+                    
+                    # If user exists and is verified, show error
+                    if existing_user.is_verified:
+                        form.add_error('email', 'A user with that email already exists. Please try logging in instead.')
+                        return render(request, self.template_name, {
+                            'form': self.get_form(self.get_form_class()),
+                            'signup_form': form,
+                            'show_signup': True
+                        })
+                    
+                    # If user exists but is not verified, delete the old user
+                    existing_user.delete()
+                    
+                except User.DoesNotExist:
+                    # No existing user, proceed normally
+                    pass
+                
+                # Create new user
                 user = form.save(commit=False)
                 user.is_active = False
+                user.is_verified = False  # Explicitly set to False
                 otp = str(random.randint(100000, 999999))
                 user.otp = otp
                 user.otp_created_at = timezone.now()
@@ -31,15 +55,26 @@ class CombinedAuthView(LoginView):
                 # Link PC invites to the newly created user
                 self.link_pc_invites(user, form)
                 
-                send_mail(
-                    'Your OTP for PaperSetu Registration',
-                    f'Your OTP is: {otp}',
-                    'noreply@papersetu.com',
-                    [user.email],
-                    fail_silently=False,
-                )
-                request.session['pending_user_id'] = user.id
-                return redirect('accounts:verify_otp')
+                # Send OTP email
+                try:
+                    send_mail(
+                        'Your OTP for PaperSetu Registration',
+                        f'Your OTP is: {otp}',
+                        'noreply@papersetu.com',
+                        [user.email],
+                        fail_silently=False,
+                    )
+                    request.session['pending_user_id'] = user.id
+                    return redirect('accounts:verify_otp')
+                except Exception as e:
+                    # If email fails, delete the user and show error
+                    user.delete()
+                    messages.error(request, 'Failed to send OTP. Please try again later.')
+                    return render(request, self.template_name, {
+                        'form': self.get_form(self.get_form_class()),
+                        'signup_form': form,
+                        'show_signup': True
+                    })
             else:
                 # Render the page with registration errors
                 return render(request, self.template_name, {
@@ -48,26 +83,75 @@ class CombinedAuthView(LoginView):
                     'show_signup': True
                 })
         else:
-            # Handle login (default LoginView behavior)
-            # SAFETY NET: If user exists and password is correct but is_active/is_verified is False, fix and log in
+            # Handle login
             username = request.POST.get('username')
             password = request.POST.get('password')
-            user = None
+            
             if username and password:
                 try:
-                    user_obj = User.objects.get(username=username)
-                except User.DoesNotExist:
+                    # Try to find user by username or email
                     try:
-                        user_obj = User.objects.get(email=username)
+                        user_obj = User.objects.get(username=username)
                     except User.DoesNotExist:
-                        user_obj = None
-                if user_obj and user_obj.check_password(password):
-                    if not user_obj.is_active or not user_obj.is_verified:
-                        user_obj.is_active = True
-                        user_obj.is_verified = True
-                        user_obj.save()
+                        try:
+                            user_obj = User.objects.get(email=username)
+                        except User.DoesNotExist:
+                            user_obj = None
+                    
+                    if user_obj and user_obj.check_password(password):
+                        # Check if user is verified
+                        if not user_obj.is_verified:
+                            # User exists but is not verified - redirect to OTP verification
+                            # Generate new OTP and send email
+                            otp = str(random.randint(100000, 999999))
+                            user_obj.otp = otp
+                            user_obj.otp_created_at = timezone.now()
+                            user_obj.save()
+                            
+                            try:
+                                send_mail(
+                                    'Your OTP for PaperSetu Registration',
+                                    f'Your OTP is: {otp}',
+                                    'noreply@papersetu.com',
+                                    [user_obj.email],
+                                    fail_silently=False,
+                                )
+                                request.session['pending_user_id'] = user_obj.id
+                                messages.warning(request, 'Please verify your email with the OTP sent to your email address.')
+                                return redirect('accounts:verify_otp')
+                            except Exception as e:
+                                messages.error(request, 'Failed to send OTP. Please try again later.')
+                                return render(request, self.template_name, {
+                                    'form': self.get_form(self.get_form_class()),
+                                    'signup_form': UserRegistrationForm(),
+                                    'show_signup': False
+                                })
+                        
+                        # User is verified, proceed with normal login
+                        if not user_obj.is_active:
+                            user_obj.is_active = True
+                            user_obj.save()
+                        
                         auth_login(request, user_obj)
                         return redirect('dashboard:dashboard')
+                    else:
+                        # Invalid credentials
+                        messages.error(request, 'Invalid username/email or password.')
+                        return render(request, self.template_name, {
+                            'form': self.get_form(self.get_form_class()),
+                            'signup_form': UserRegistrationForm(),
+                            'show_signup': False
+                        })
+                        
+                except Exception as e:
+                    messages.error(request, 'An error occurred during login. Please try again.')
+                    return render(request, self.template_name, {
+                        'form': self.get_form(self.get_form_class()),
+                        'signup_form': UserRegistrationForm(),
+                        'show_signup': False
+                    })
+            
+            # If no username/password provided, use default LoginView behavior
             return super().post(request, *args, **kwargs)
 
     def link_pc_invites(self, user, form):
@@ -135,12 +219,24 @@ class CombinedAuthView(LoginView):
 def verify_otp(request):
     user_id = request.session.get('pending_user_id')
     if not user_id:
+        messages.error(request, 'No verification session found. Please sign up again.')
         return redirect('accounts:login')
     
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         messages.error(request, 'Invalid verification session. Please try signing up again.')
+        # Clear the session
+        if 'pending_user_id' in request.session:
+            del request.session['pending_user_id']
+        return redirect('accounts:login')
+    
+    # Check if user is already verified
+    if user.is_verified:
+        messages.success(request, 'Your account is already verified. You can now log in.')
+        # Clear the session
+        if 'pending_user_id' in request.session:
+            del request.session['pending_user_id']
         return redirect('accounts:login')
     
     if request.method == 'POST':
