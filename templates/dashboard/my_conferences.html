@@ -1,34 +1,109 @@
 {% extends 'dashboard/dashboard.html' %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">My Conferences</h1>
-<table class="min-w-full bg-white rounded shadow">
-  <thead>
-    <tr>
-      <th class="px-4 py-2">Conference Name</th>
-      <th class="px-4 py-2">Status</th>
-      <th class="px-4 py-2">Start Date</th>
-      <th class="px-4 py-2">End Date</th>
-      <th class="px-4 py-2">Chair Tools</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for conf in conferences %}
-    <tr>
-      <td class="px-4 py-2">{{ conf.name }}</td>
-      <td class="px-4 py-2">{{ conf.status|title }}</td>
-      <td class="px-4 py-2">{{ conf.start_date }}</td>
-      <td class="px-4 py-2">{{ conf.end_date }}</td>
-      <td class="px-4 py-2">
-        {% if not conf.is_approved %}
-          <span class="bg-yellow-200 text-yellow-800 px-3 py-1 rounded font-semibold">Approval Pending</span>
-        {% else %}
-          <a href="{% url 'dashboard:conference_submissions' conf.id %}" class="bg-blue-600 text-white px-3 py-1 rounded">Go to Dashboard</a>
-        {% endif %}
-      </td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="5" class="text-center text-gray-500 py-4">No conferences found.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="max-w-6xl mx-auto">
+    <!-- Page Header -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">My Conferences</h1>
+        <p class="text-gray-600">View all conferences where you have roles and access your conference dashboards</p>
+    </div>
+
+    <!-- Conferences Table -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900">Conference Roles</h2>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conference</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Track</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item in conferences_with_roles %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4">
+                            <div>
+                                <div class="text-sm font-medium text-gray-900">{{ item.conference.name }}</div>
+                                {% if item.conference.acronym %}
+                                    <div class="text-sm text-gray-500">{{ item.conference.acronym }}</div>
+                                {% endif %}
+                                <div class="text-sm text-gray-500">{{ item.conference.venue|default:"TBD" }}{% if item.conference.city %}, {{ item.conference.city }}{% endif %}</div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                                {% if item.role == 'chair' %}bg-purple-100 text-purple-800
+                                {% elif item.role == 'pc_member' %}bg-blue-100 text-blue-800
+                                {% elif item.role == 'author' %}bg-green-100 text-green-800
+                                {% elif item.role == 'subreviewer' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {% if item.role == 'chair' %}Chair
+                                {% elif item.role == 'pc_member' %}PC Member
+                                {% elif item.role == 'author' %}Author
+                                {% elif item.role == 'subreviewer' %}Subreviewer
+                                {% else %}{{ item.role|title }}{% endif %}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if item.track %}
+                                {{ item.track.name }} ({{ item.track.track_id }})
+                            {% else %}
+                                <span class="text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                                {% if item.conference.status == 'upcoming' %}bg-yellow-100 text-yellow-800
+                                {% elif item.conference.status == 'live' %}bg-green-100 text-green-800
+                                {% elif item.conference.status == 'pending' %}bg-orange-100 text-orange-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ item.conference.status|title }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <div>{{ item.conference.start_date|date:"M d, Y" }}</div>
+                            <div class="text-gray-400">to {{ item.conference.end_date|date:"M d, Y" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            {% if not item.conference.is_approved %}
+                                <span class="bg-yellow-200 text-yellow-800 px-3 py-1 rounded font-semibold text-xs">Approval Pending</span>
+                            {% else %}
+                                <a href="{% url 'conference:choose_conference_role' item.conference.id %}" 
+                                   class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                                    Access Conference
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-calendar-times text-gray-300 text-4xl mb-4"></i>
+                                <p class="text-lg font-medium">No conferences found</p>
+                                <p class="text-sm">You haven't joined any conferences yet.</p>
+                                <div class="mt-4 space-x-2">
+                                    <a href="{% url 'dashboard:create_conference' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                                        Create Conference
+                                    </a>
+                                    <a href="{% url 'conference:conferences_list' %}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                                        Find Conferences
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 {% endblock %} 

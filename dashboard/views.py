@@ -2907,16 +2907,40 @@ def roles_overview(request):
 
 @login_required
 def my_conferences(request):
-    # Get all conferences where the user has a role
+    # Get all conferences where the user has a role with role information
     user_roles = UserConferenceRole.objects.filter(user=request.user).select_related('conference')
-    conferences = [role.conference for role in user_roles]
-    # Also include conferences created by the user that are pending approval (if not already in the list)
-    pending_confs = list(Conference.objects.filter(chair=request.user, status='pending'))
-    # Merge, avoiding duplicates
-    all_confs = {conf.id: conf for conf in conferences}
+    
+    # Create a list of conferences with role information
+    conferences_with_roles = []
+    for role in user_roles:
+        conferences_with_roles.append({
+            'conference': role.conference,
+            'role': role.role,
+            'track': role.track
+        })
+    
+    # Also include conferences created by the user that are pending approval
+    pending_confs = Conference.objects.filter(chair=request.user, status='pending')
     for conf in pending_confs:
-        all_confs[conf.id] = conf
-    return render(request, 'dashboard/my_conferences.html', {'conferences': all_confs.values()})
+        # Check if this conference is already in the list
+        if not any(item['conference'].id == conf.id for item in conferences_with_roles):
+            conferences_with_roles.append({
+                'conference': conf,
+                'role': 'chair',
+                'track': None
+            })
+    
+    # Add chair role for conferences where user is chair but not in UserConferenceRole
+    chaired_confs = Conference.objects.filter(chair=request.user, is_approved=True)
+    for conf in chaired_confs:
+        if not any(item['conference'].id == conf.id for item in conferences_with_roles):
+            conferences_with_roles.append({
+                'conference': conf,
+                'role': 'chair',
+                'track': None
+            })
+    
+    return render(request, 'dashboard/my_conferences.html', {'conferences_with_roles': conferences_with_roles})
 
 class CreateConferenceView(LoginRequiredMixin, CreateView):
     model = Conference
