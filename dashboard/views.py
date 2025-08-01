@@ -3018,7 +3018,44 @@ def read_news(request):
 
 @login_required
 def user_settings(request):
-    # Placeholder: Add user settings logic here
+    if request.method == 'POST':
+        # Handle form submission
+        full_name = request.POST.get('full_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        affiliation = request.POST.get('affiliation', '').strip()
+        new_password = request.POST.get('password', '').strip()
+        
+        # Update user information
+        if full_name:
+            request.user.first_name = full_name.split()[0] if full_name.split() else ''
+            request.user.last_name = ' '.join(full_name.split()[1:]) if len(full_name.split()) > 1 else ''
+        
+        if email and email != request.user.email:
+            # Check if email is already taken
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            if User.objects.filter(email=email).exclude(id=request.user.id).exists():
+                messages.error(request, 'This email address is already in use.')
+            else:
+                request.user.email = email
+        
+        # Update affiliation if user has a profile
+        if hasattr(request.user, 'profile') and affiliation is not None:
+            request.user.profile.affiliation = affiliation
+            request.user.profile.save()
+        
+        # Update password if provided
+        if new_password:
+            request.user.set_password(new_password)
+            messages.success(request, 'Password updated successfully. Please log in again.')
+            from django.contrib.auth import logout
+            logout(request)
+            return redirect('accounts:login')
+        
+        request.user.save()
+        messages.success(request, 'Profile updated successfully.')
+        return redirect('dashboard:settings')
+    
     return render(request, 'dashboard/settings.html', {'user': request.user})
 
 def read_terms(request):
