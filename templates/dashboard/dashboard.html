@@ -27,11 +27,6 @@
     <nav class="gradient-header shadow mb-8 border-b border-blue-100">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center gap-2">
-                <!-- Back Button inside nav, before logo -->
-                <button onclick="window.history.back()" class="mr-4 flex items-center px-3 py-1 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-blue-50 transition text-blue-700 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                    Back
-                </button>
                 <img src="{% static 'images/LOGO BG.png' %}" alt="PaperSetu Logo" class="w-10 h-10 rounded-full shadow bg-white">
                 <span class="text-2xl font-bold text-indigo-800">PaperSetu</span>
             </div>
@@ -46,8 +41,8 @@
                         <span>{{ user.get_full_name|default:user.username }}</span>
                         <i class="fas fa-chevron-down text-sm"></i>
                     </button>
-                    <div x-show="open" @click.away="open = false" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                        <div class="px-4 py-2 text-sm text-gray-500 border-b border-gray-100">
+                    <div x-show="open" @click.away="open = false" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                        <div class="px-4 py-2 text-sm text-gray-500 border-b border-gray-100 break-all">
                             {{ user.email }}
                         </div>
                         <a href="{% url 'dashboard:settings' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
