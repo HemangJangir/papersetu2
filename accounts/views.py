@@ -84,7 +84,7 @@ class CombinedAuthView(LoginView):
                     'show_signup': True
                 })
         else:
-            # Handle login
+            # Handle login - use default Django authentication
             username = request.POST.get('username')
             password = request.POST.get('password')
             
@@ -137,23 +137,14 @@ class CombinedAuthView(LoginView):
                         auth_login(request, user_obj)
                         return redirect('dashboard:dashboard')
                     else:
-                        # Invalid credentials
-                        messages.error(request, 'Invalid username/email or password.')
-                        return render(request, self.template_name, {
-                            'form': self.get_form(self.get_form_class()),
-                            'signup_form': UserRegistrationForm(),
-                            'show_signup': False
-                        })
+                        # Invalid credentials - use default Django error handling
+                        pass
                         
                 except Exception as e:
-                    messages.error(request, 'An error occurred during login. Please try again.')
-                    return render(request, self.template_name, {
-                        'form': self.get_form(self.get_form_class()),
-                        'signup_form': UserRegistrationForm(),
-                        'show_signup': False
-                    })
+                    # If there's an error, fall back to default Django behavior
+                    pass
             
-            # If no username/password provided, use default LoginView behavior
+            # Use default LoginView behavior for all other cases
             return super().post(request, *args, **kwargs)
 
     def link_pc_invites(self, user, form):
