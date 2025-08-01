@@ -110,5 +110,12 @@ python manage.py cleanup_unverified_users --days 3
 - Test signup with existing verified email → Should show error
 - Test signup with existing unverified email → Should allow re-registration
 - Test login with unverified user → Should redirect to OTP
-- Test OTP verification → Should work correctly
-- Test cleanup command → Should remove old unverified users 
+- Test OTP verification → Should work correctly and auto-login user
+- Test cleanup command → Should remove old unverified users
+
+## Recent Fixes (Latest Update)
+- **Auto-login after OTP verification**: Users are now automatically logged in after successful OTP verification
+- **Session flags**: Added `login_verification` flag to distinguish between new registration and login verification
+- **Welcome email**: Only sent for new registrations, not for login verification
+- **Form validation**: Updated to allow re-registration for unverified users
+- **Cleanup tested**: Successfully cleaned up old unverified users 

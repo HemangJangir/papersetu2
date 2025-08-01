@@ -65,6 +65,7 @@ class CombinedAuthView(LoginView):
                         fail_silently=False,
                     )
                     request.session['pending_user_id'] = user.id
+                    request.session['login_verification'] = False  # Flag for new registration
                     return redirect('accounts:verify_otp')
                 except Exception as e:
                     # If email fails, delete the user and show error
@@ -117,6 +118,7 @@ class CombinedAuthView(LoginView):
                                     fail_silently=False,
                                 )
                                 request.session['pending_user_id'] = user_obj.id
+                                request.session['login_verification'] = True  # Flag for login verification
                                 messages.warning(request, 'Please verify your email with the OTP sent to your email address.')
                                 return redirect('accounts:verify_otp')
                             except Exception as e:
@@ -299,10 +301,11 @@ def verify_otp(request):
             user.otp_created_at = None
             user.save()
             
-            # Send welcome email
-            try:
-                subject = 'Welcome to PaperSetu!'
-                message = f'''
+            # Send welcome email only for new registrations (not for login verification)
+            if not request.session.get('login_verification'):
+                try:
+                    subject = 'Welcome to PaperSetu!'
+                    message = f'''
 Hello {user.get_full_name() or user.username},
 
 Welcome to PaperSetu! Your account has been successfully created and verified.
@@ -318,24 +321,28 @@ If you have any questions or need assistance, please don't hesitate to contact u
 
 Best regards,
 The PaperSetu Team
-                '''
-                send_mail(
-                    subject,
-                    message,
-                    'noreply@papersetu.com',
-                    [user.email],
-                    fail_silently=False,
-                )
-            except Exception as e:
-                # Don't fail the registration if email fails
-                pass
+                    '''
+                    send_mail(
+                        subject,
+                        message,
+                        'noreply@papersetu.com',
+                        [user.email],
+                        fail_silently=False,
+                    )
+                except Exception as e:
+                    # Don't fail the registration if email fails
+                    pass
             
             # Clear the session
             if 'pending_user_id' in request.session:
                 del request.session['pending_user_id']
+            if 'login_verification' in request.session:
+                del request.session['login_verification']
             
-            messages.success(request, 'Account verified! You can now log in.')
-            return redirect('accounts:login')
+            # Automatically log the user in
+            auth_login(request, user)
+            messages.success(request, 'Account verified successfully! Welcome to PaperSetu.')
+            return redirect('dashboard:dashboard')
         else:
             messages.error(request, 'Invalid OTP. Please try again.')
     
