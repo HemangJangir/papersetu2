@@ -355,6 +355,18 @@ def password_reset_request(request):
             email = form.cleaned_data['email']
             try:
                 user = User.objects.get(email=email)
+                
+                # Check if user is unverified and not invited
+                if not user.is_verified:
+                    # Check if user has any PC invites or conference roles (invited users)
+                    from conference.models import PCInvite, UserConferenceRole
+                    has_pc_invites = PCInvite.objects.filter(email=user.email).exists()
+                    has_conference_roles = UserConferenceRole.objects.filter(user=user).exists()
+                    
+                    if not has_pc_invites and not has_conference_roles:
+                        messages.error(request, 'This email is registered but not verified. Please complete your registration first by verifying your email with the OTP sent during registration.')
+                        return render(request, 'accounts/password_reset_email.html', {'form': form})
+                
                 otp = ''.join(random.choices(string.digits, k=6))
                 user.otp = otp
                 user.otp_created_at = timezone.now()
@@ -449,7 +461,15 @@ def password_reset_new(request):
             user.otp = ''
             user.otp_created_at = None
             user.is_active = True
-            user.is_verified = True
+            
+            # If user was invited (has PC invites or conference roles), mark as verified
+            from conference.models import PCInvite, UserConferenceRole
+            has_pc_invites = PCInvite.objects.filter(email=user.email).exists()
+            has_conference_roles = UserConferenceRole.objects.filter(user=user).exists()
+            
+            if has_pc_invites or has_conference_roles:
+                user.is_verified = True
+            
             user.save()
             # Clear session
             request.session.pop('reset_user_id', None)
