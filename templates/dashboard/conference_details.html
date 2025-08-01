@@ -66,6 +66,22 @@
                         <label class="block text-sm font-medium text-gray-700">Organizing Institution</label>
                         <p class="mt-1 text-gray-900">{{ conference.organizing_institution|default:"Not specified" }}</p>
                     </div>
+                    {% if is_chair and invite_link %}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Conference Invite Link</label>
+                        <div class="mt-1 flex items-center space-x-2">
+                            <input type="text" readonly value="{{ invite_link }}" 
+                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-blue-700 font-mono text-sm" 
+                                   onclick="this.select();document.execCommand('copy');" 
+                                   title="Click to copy">
+                            <button onclick="copyToClipboard('{{ invite_link }}')" 
+                                    class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm">
+                                Copy
+                            </button>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">Share this link to invite authors or users to join this conference</p>
+                    </div>
+                    {% endif %}
                 </div>
             </section>
 
@@ -235,5 +251,67 @@
                 });
             });
         });
+        
+        // Copy to clipboard functionality
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                // Use the modern clipboard API
+                navigator.clipboard.writeText(text).then(function() {
+                    showCopySuccess();
+                }).catch(function(err) {
+                    console.error('Could not copy text: ', err);
+                    fallbackCopyTextToClipboard(text);
+                });
+            } else {
+                // Fallback for older browsers
+                fallbackCopyTextToClipboard(text);
+            }
+        }
+        
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showCopySuccess();
+                }
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+            document.body.removeChild(textArea);
+        }
+        
+        function showCopySuccess() {
+            // Create a temporary success message
+            const successMsg = document.createElement('div');
+            successMsg.textContent = 'Copied to clipboard!';
+            successMsg.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #10B981;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 6px;
+                z-index: 1000;
+                font-weight: 500;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            `;
+            document.body.appendChild(successMsg);
+            
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+                if (successMsg.parentNode) {
+                    successMsg.parentNode.removeChild(successMsg);
+                }
+            }, 2000);
+        }
     </script>
 {% endblock %} 

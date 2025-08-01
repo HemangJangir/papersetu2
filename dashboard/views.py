@@ -434,7 +434,6 @@ def pc_conference_detail(request, conf_id):
         'active_tab': tab,
         'conferences_with_roles': conferences_with_roles,
         'user_track': user_role.track if user_role else None,
-        'invite_link': request.build_absolute_uri(reverse('conference:join_conference', args=[conference.invite_link])) if conference.invite_link else None,
     }
     return render(request, 'dashboard/pc_conference_detail.html', context)
 
@@ -975,6 +974,12 @@ def conference_details(request, conf_id):
         "Email", "Administration", "Conference", "News", "papersetu", "Tracks"
     ]
     
+    # Generate invite link for chairs
+    invite_link = None
+    if is_chair and conference.invite_link:
+        from django.urls import reverse
+        invite_link = request.build_absolute_uri(reverse('conference:join_conference', args=[conference.invite_link]))
+    
     context = {
         'conference': conference,
         'is_chair': is_chair,
@@ -986,6 +991,7 @@ def conference_details(request, conf_id):
         'nav_items': nav_items,
         'active_tab': 'Conference',
         'today': date.today(),
+        'invite_link': invite_link,
     }
     
     return render(request, 'dashboard/conference_details.html', context)
