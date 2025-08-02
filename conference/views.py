@@ -729,3 +729,69 @@ def role_based_dashboard(request, conference_id):
         return redirect('conference:subreviewer_dashboard', conference_id=conference.id)
     else:
         return redirect('dashboard:conference_details', conf_id=conference.id) 
+
+def browse_conferences(request):
+    # Get search parameters
+    search_query = request.GET.get('q', '')
+    area_filter = request.GET.get('area', '')
+    
+    # Get conferences
+    conferences = Conference.objects.filter(
+        is_approved=True,
+        status__in=['upcoming', 'live']
+    ).order_by('start_date')
+    
+    # Apply search filter
+    if search_query:
+        conferences = conferences.filter(
+            Q(name__icontains=search_query) |
+            Q(acronym__icontains=search_query) |
+            Q(venue__icontains=search_query) |
+            Q(city__icontains=search_query) |
+            Q(primary_area__icontains=search_query)
+        )
+    
+    # Apply area filter
+    if area_filter:
+        conferences = conferences.filter(primary_area=area_filter)
+    
+    # Add display status for ongoing conferences
+    today = timezone.now().date()
+    for conference in conferences:
+        if conference.start_date <= today <= conference.end_date:
+            conference.display_status = 'ongoing'
+        else:
+            conference.display_status = conference.status
+    
+    # Get area choices for filter dropdown
+    from .models import AREA_CHOICES
+    area_choices = AREA_CHOICES
+    
+    context = {
+        'search_results': conferences,
+        'search_query': search_query,
+        'area_filter': area_filter,
+        'area_choices': area_choices,
+    }
+    
+    return render(request, 'conference/browse_conferences.html', context)
+
+def join_conference_redirect(request, conference_id):
+    """
+    Redirect non-authenticated users to registration first, then login.
+    For authenticated users, redirect directly to choose role.
+    """
+    try:
+        conference = get_object_or_404(Conference, id=conference_id)
+        
+        if request.user.is_authenticated:
+            # User is already logged in, redirect to choose role
+            return redirect('conference:choose_conference_role', conference_id=conference_id)
+        else:
+            # User is not logged in, redirect to registration with next parameter
+            next_url = reverse('conference:choose_conference_role', kwargs={'conference_id': conference_id})
+            return redirect(f'/accounts/login/?next={next_url}&show_signup=true')
+    except Exception as e:
+        # Fallback to login page if anything goes wrong
+        messages.error(request, 'Unable to process conference join request. Please try again.')
+        return redirect('accounts:login') 

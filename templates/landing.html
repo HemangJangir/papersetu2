@@ -34,6 +34,23 @@
         0% { transform: translateY(0) scale(1); }
         100% { transform: translateY(-40px) scale(1.1); }
       }
+      
+      /* Hide scrollbar for conference container */
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      
+      /* Line clamp for conference titles */
+      .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900">
@@ -87,15 +104,15 @@
             <div class="swiper-wrapper">
               <!-- Slide 1 -->
               <div class="swiper-slide">
-                <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=800&q=80" alt="Conference Slide 1" class="w-full h-96 object-cover" />
+                <img src="https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&w=800&q=80" alt="Conference Presentation" class="w-full h-96 object-cover" />
               </div>
               <!-- Slide 2 -->
               <div class="swiper-slide">
-                <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80" alt="Conference Slide 2" class="w-full h-96 object-cover" />
+                <img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80" alt="Conference Hall" class="w-full h-96 object-cover" />
               </div>
               <!-- Slide 3 -->
               <div class="swiper-slide">
-                <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80" alt="Conference Slide 3" class="w-full h-96 object-cover" />
+                <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=800&q=80" alt="Research Collaboration" class="w-full h-96 object-cover" />
               </div>
             </div>
             <!-- Pagination Dots -->
@@ -104,6 +121,112 @@
         </div>
         <!-- Hero Image Slider End -->
       </div>
+    </div>
+  </section>
+
+  <!-- Available Conferences Section -->
+  <section class="w-full bg-gray-50 py-16 relative z-10">
+    <div class="max-w-6xl mx-auto px-4">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl md:text-4xl font-bold text-indigo-800 mb-4">
+          Available Conferences
+        </h2>
+        <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+          Discover and join upcoming conferences in your field of research
+        </p>
+      </div>
+      
+      {% if conferences %}
+      <div class="relative">
+        <!-- Left Arrow -->
+        <button id="prevBtn" class="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 hidden md:block">
+          <svg class="w-6 h-6 text-indigo-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+        </button>
+        
+        <!-- Right Arrow -->
+        <button id="nextBtn" class="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 hidden md:block">
+          <svg class="w-6 h-6 text-indigo-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </button>
+        
+        <!-- Conference Cards Container -->
+        <div id="conferenceContainer" class="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide px-4 py-4">
+          {% for conference in conferences %}
+          <div class="conference-card flex-shrink-0 w-72 md:w-80 bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden">
+            <div class="p-6">
+              <div class="flex items-center justify-between mb-3">
+                <span class="px-3 py-1 text-xs font-semibold rounded-full 
+                  {% if conference.display_status == 'ongoing' or conference.status == 'live' %}bg-green-100 text-green-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                  {% if conference.display_status == 'ongoing' %}Ongoing{% elif conference.display_status %}{{ conference.display_status|title }}{% else %}{{ conference.status|title }}{% endif %}
+                </span>
+                <span class="text-sm text-gray-500">{{ conference.primary_area }}</span>
+              </div>
+              
+              <h3 class="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{{ conference.name }}</h3>
+              
+              {% if conference.acronym %}
+              <p class="text-sm text-indigo-600 font-semibold mb-3">{{ conference.acronym }}</p>
+              {% endif %}
+              
+              <div class="space-y-2 mb-4">
+                {% if conference.venue %}
+                <div class="flex items-center text-sm text-gray-600">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  </svg>
+                  {{ conference.venue }}{% if conference.city %}, {{ conference.city }}{% endif %}
+                </div>
+                {% endif %}
+                
+                <div class="flex items-center text-sm text-gray-600">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                  {{ conference.start_date|date:"M d" }} - {{ conference.end_date|date:"M d, Y" }}
+                </div>
+              </div>
+              
+              <div class="flex justify-between items-center">
+                <a href="/conference/browse/?q={{ conference.name|urlencode }}" 
+                   class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold transition-colors">
+                  Learn More →
+                </a>
+                <a href="/accounts/login/" 
+                   class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                  Join Conference
+                </a>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      
+      <!-- Search All Conferences Button -->
+      <div class="text-center mt-8">
+        <a href="/conference/browse/" 
+           class="inline-flex items-center px-8 py-4 bg-indigo-800 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          Browse All Conferences
+        </a>
+      </div>
+      {% else %}
+      <div class="text-center py-12">
+        <div class="text-gray-400 mb-4">
+          <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-600 mb-2">No Conferences Available</h3>
+        <p class="text-gray-500">Check back later for upcoming conferences</p>
+      </div>
+      {% endif %}
     </div>
   </section>
 
@@ -285,11 +408,67 @@
       vertical: true,
       horizontal: false
     });
-    // Mobile menu toggle
-    document.querySelector('.md\\:hidden button').onclick = function() {
-      const menu = document.querySelector('.md\\:hidden #mobile-menu');
-      menu.classList.toggle('hidden');
-    };
+    // Conference carousel functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const conferenceContainer = document.getElementById('conferenceContainer');
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      
+      if (conferenceContainer && prevBtn && nextBtn) {
+        console.log('Conference carousel elements found');
+        
+        // Responsive scroll amount based on screen size
+        const getScrollAmount = () => {
+          return window.innerWidth < 768 ? 288 : 320; // w-72 + gap vs w-80 + gap
+        };
+        let scrollAmount = getScrollAmount();
+        
+        // Update scroll amount on window resize
+        window.addEventListener('resize', () => {
+          scrollAmount = getScrollAmount();
+        });
+        
+        prevBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          console.log('Previous button clicked');
+          conferenceContainer.scrollBy({
+            left: -scrollAmount,
+            behavior: 'smooth'
+          });
+        });
+        
+        nextBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          console.log('Next button clicked');
+          conferenceContainer.scrollBy({
+            left: scrollAmount,
+            behavior: 'smooth'
+          });
+        });
+        
+        // Show/hide arrows based on scroll position
+        conferenceContainer.addEventListener('scroll', () => {
+          const isAtStart = conferenceContainer.scrollLeft === 0;
+          const isAtEnd = conferenceContainer.scrollLeft + conferenceContainer.clientWidth >= conferenceContainer.scrollWidth;
+          
+          prevBtn.style.opacity = isAtStart ? '0.5' : '1';
+          prevBtn.style.pointerEvents = isAtStart ? 'none' : 'auto';
+          
+          nextBtn.style.opacity = isAtEnd ? '0.5' : '1';
+          nextBtn.style.pointerEvents = isAtEnd ? 'none' : 'auto';
+        });
+        
+        // Initial state
+        prevBtn.style.opacity = '0.5';
+        prevBtn.style.pointerEvents = 'none';
+      } else {
+        console.log('Conference carousel elements not found:', {
+          container: !!conferenceContainer,
+          prevBtn: !!prevBtn,
+          nextBtn: !!nextBtn
+        });
+      }
+    });
   </script>
   <style>
     @keyframes bgZoom {

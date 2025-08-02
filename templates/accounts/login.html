@@ -76,7 +76,7 @@
 
     <!-- Register Form Overlay -->
     <div id="register-overlay"
-      class="absolute inset-0 w-full h-full flex flex-col md:flex-row bg-white/95 rounded-3xl shadow-2xl overflow-hidden z-20 {% if signup_form.errors or signup_form.non_field_errors %}opacity-100{% else %}opacity-0 pointer-events-none{% endif %} transition-all duration-500">
+      class="absolute inset-0 w-full h-full flex flex-col md:flex-row bg-white/95 rounded-3xl shadow-2xl overflow-hidden z-20 {% if signup_form.errors or signup_form.non_field_errors or show_signup %}opacity-100{% else %}opacity-0 pointer-events-none{% endif %} transition-all duration-500">
       <!-- Left Section -->
       <div class="w-full md:w-1/2 flex flex-col justify-center items-center bg-white p-20 relative min-h-[740px] overflow-hidden">
         <div class="absolute right-0 top-0 w-[120%] h-full bg-gradient-to-br from-indigo-900 to-indigo-700 rounded-tr-[200px] rounded-br-[200px] z-0"></div>
@@ -164,6 +164,13 @@
     const showRegisterBtn = document.getElementById('show-register');
     const showLoginBtn = document.getElementById('show-login');
     const registerOverlay = document.getElementById('register-overlay');
+    
+    // Check if show_signup is true and show registration form
+    {% if show_signup %}
+    registerOverlay.classList.remove('opacity-0', 'pointer-events-none');
+    registerOverlay.classList.add('opacity-100');
+    {% endif %}
+    
     showRegisterBtn.addEventListener('click', () => {
       registerOverlay.classList.remove('opacity-0', 'pointer-events-none');
       registerOverlay.classList.add('opacity-100');

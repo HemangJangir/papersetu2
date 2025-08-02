@@ -325,3 +325,24 @@ def fix_missing_tables(request):
         </form>
         <p><strong>⚠️ IMPORTANT: Delete this view after use!</strong></p>
     """) 
+
+def get_available_conferences():
+    """Get available conferences for the landing page"""
+    from conference.models import Conference
+    from django.utils import timezone
+    
+    # Get upcoming and live conferences that are approved
+    conferences = Conference.objects.filter(
+        is_approved=True,
+        status__in=['upcoming', 'live']
+    ).order_by('start_date')[:10]  # Limit to 10 conferences
+    
+    # Update status to 'ongoing' for conferences that are currently running
+    today = timezone.now().date()
+    for conference in conferences:
+        if conference.start_date <= today <= conference.end_date:
+            conference.display_status = 'ongoing'
+        else:
+            conference.display_status = conference.status
+    
+    return conferences 

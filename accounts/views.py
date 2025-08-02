@@ -204,10 +204,13 @@ class CombinedAuthView(LoginView):
             pass  # Don't fail if conference app is not available
 
     def get(self, request, *args, **kwargs):
+        # Check if show_signup parameter is present
+        show_signup = request.GET.get('show_signup', 'false').lower() == 'true'
+        
         return render(request, self.template_name, {
             'form': self.get_form(self.get_form_class()),
             'signup_form': UserRegistrationForm(),
-            'show_signup': False
+            'show_signup': show_signup
         })
 
 def verify_otp(request):

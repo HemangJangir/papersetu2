@@ -3,9 +3,9 @@
 
 {% block content %}
     <!-- Back Button -->
-    <button type="button" onclick="window.history.back()" class="mb-6 w-max px-4 py-2 bg-gray-100 hover:bg-blue-100 text-blue-700 rounded-lg flex items-center gap-2 transition-colors">
-        <i class="fas fa-arrow-left"></i> Back
-    </button>
+    <a href="{% url 'homepage' %}" class="mb-6 w-max px-4 py-2 bg-gray-100 hover:bg-blue-100 text-blue-700 rounded-lg flex items-center gap-2 transition-colors">
+        <i class="fas fa-arrow-left"></i> Back to Home
+    </a>
 
     <main class="flex-1 flex flex-col items-center justify-center py-12">
         <div class="bg-white rounded-2xl shadow-xl p-10 max-w-lg w-full text-center">
@@ -32,4 +32,14 @@
             {% endif %}
         </div>
     </main>
+
+    <script>
+        // Handle browser back button to redirect to homepage
+        window.addEventListener('popstate', function(event) {
+            window.location.href = "{% url 'homepage' %}";
+        });
+        
+        // Push current state to history so back button works
+        window.history.pushState({}, '', window.location.href);
+    </script>
 {% endblock %} 

@@ -52,7 +52,9 @@ def root_redirect(request):
     if request.user.is_authenticated:
         return redirect('homepage')
     else:
-        return render(request, 'landing.html')
+        from .views import get_available_conferences
+        conferences = get_available_conferences()
+        return render(request, 'landing.html', {'conferences': conferences})
 
 urlpatterns = [
     path('admin/', admin.site.urls),

@@ -8,6 +8,7 @@ urlpatterns = [
     path('create/', views.create_conference, name='create_conference'),
     path('reviewer-volunteer/', views.reviewer_volunteer, name='reviewer_volunteer'),
     path('<int:conference_id>/submit-paper/', views.submit_paper, name='submit_paper'),
+    path('join/<int:conference_id>/', views.join_conference_redirect, name='join_conference_redirect'),
     path('join/<str:invite_link>/', views.join_conference, name='join_conference'),
     path('<int:conference_id>/choose-role/', views.choose_conference_role, name='choose_conference_role'),
     path('<int:conference_id>/author/', views.author_dashboard, name='author_dashboard'),
@@ -15,6 +16,7 @@ urlpatterns = [
     path('paper/<int:paper_id>/download/', views.download_paper, name='download_paper'),
     path('author/<int:conference_id>/papers/', views.author_papers_view, name='author_papers'),
     path('search/', views.search_conferences, name='search_conferences'),
+    path('browse/', views.browse_conferences, name='browse_conferences'),
     path('conference/<int:conference_id>/role-dashboard/', views.role_based_dashboard, name='role_based_dashboard'),
 ]
 
