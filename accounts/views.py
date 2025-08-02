@@ -136,7 +136,13 @@ class CombinedAuthView(LoginView):
                             user_obj.save()
                         
                         auth_login(request, user_obj)
-                        return redirect('dashboard:dashboard')
+                        
+                        # Check if there's a next parameter to redirect to
+                        next_url = request.GET.get('next')
+                        if next_url:
+                            return redirect(next_url)
+                        else:
+                            return redirect('homepage')
                     else:
                         # Invalid credentials - use default Django error handling
                         pass
@@ -334,14 +340,17 @@ The PaperSetu Team
             if 'login_verification' in request.session:
                 del request.session['login_verification']
             
-            # Clear the session
-            if 'pending_user_id' in request.session:
-                del request.session['pending_user_id']
-            if 'login_verification' in request.session:
-                del request.session['login_verification']
+            # Auto-login the user after successful verification
+            auth_login(request, user)
             
-            messages.success(request, 'Account verified successfully! You can now log in.')
-            return redirect('accounts:login')
+            # Check if there's a next parameter to redirect to
+            next_url = request.GET.get('next')
+            if next_url:
+                messages.success(request, 'Account verified successfully! Welcome to PaperSetu.')
+                return redirect(next_url)
+            else:
+                messages.success(request, 'Account verified successfully! Welcome to PaperSetu.')
+                return redirect('homepage')
         else:
             messages.error(request, 'Invalid OTP. Please try again.')
     
