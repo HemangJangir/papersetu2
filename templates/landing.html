@@ -195,7 +195,7 @@
                    class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold transition-colors">
                   Learn More →
                 </a>
-                <a href="/accounts/login/" 
+                <a href="{% url 'conference:join_conference_redirect' conference.id %}" 
                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
                   Join Conference
                 </a>
