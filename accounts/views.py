@@ -1,6 +1,27 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login as auth_login, logout
+from django.contrib.auth.backends import ModelBackend
 from django.contrib import messages
+
+def safe_auth_login(request, user):
+    """Safely login a user with proper backend specification"""
+    try:
+        # Try with the custom backend first (it's listed first in AUTHENTICATION_BACKENDS)
+        auth_login(request, user, backend='accounts.backends.EmailOrUsernameModelBackend')
+    except Exception as e:
+        print(f"Custom backend auth failed: {e}")
+        try:
+            # Fallback to default backend
+            auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+        except Exception as e2:
+            print(f"Default backend auth failed: {e2}")
+            try:
+                # Final fallback: try without backend specification
+                auth_login(request, user)
+            except Exception as e3:
+                # If all fail, log the error and raise
+                print(f"All authentication methods failed: {e3}")
+                raise e3
 from django.utils import timezone
 from django.core.mail import send_mail
 from .forms import UserRegistrationForm, PasswordResetEmailForm, PasswordResetOTPForm, SetNewPasswordForm
@@ -135,7 +156,12 @@ class CombinedAuthView(LoginView):
                             user_obj.is_active = True
                             user_obj.save()
                         
-                        auth_login(request, user_obj)
+                        # Ensure user is verified before login
+                        if not user_obj.is_verified:
+                            user_obj.is_verified = True
+                            user_obj.save()
+                        
+                        safe_auth_login(request, user_obj)
                         
                         # Check if there's a next parameter to redirect to
                         next_url = request.GET.get('next')
@@ -341,7 +367,12 @@ The PaperSetu Team
                 del request.session['login_verification']
             
             # Auto-login the user after successful verification
-            auth_login(request, user)
+            # Ensure user is active and verified before login
+            if not user.is_active:
+                user.is_active = True
+                user.save()
+            
+            safe_auth_login(request, user)
             
             # Check if there's a next parameter to redirect to
             next_url = request.GET.get('next')
