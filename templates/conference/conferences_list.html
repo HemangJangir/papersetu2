@@ -14,6 +14,11 @@
     <nav class="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-30">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center space-x-4">
+                <a href="/home/" class="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors font-semibold">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Home</span>
+                </a>
+                <div class="w-px h-6 bg-gray-300"></div>
                 <img src="{% static 'images/LOGO BG.png' %}" alt="PaperSetu Logo" class="w-16 h-16 rounded-full shadow mr-2">
                 <span class="text-2xl font-bold text-indigo-800 tracking-tight">PaperSetu</span>
             </div>
@@ -63,7 +68,7 @@
             </div>
             <form id="conference-search-form" class="flex flex-col md:flex-row items-center gap-4 justify-start relative">
                 <div class="relative w-full">
-                    <input type="text" id="search-input" name="q" value="{{ search_query|default:'' }}" placeholder="Search conferences by theme, venue, city, country, title, or acronym..." class="w-full px-4 py-2 rounded-lg border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400 pr-10" />
+                    <input type="text" id="search-input" name="q" value="{{ search_query|default:'' }}" placeholder="Search conferences by acronym, name, topic, location, organizer..." class="w-full px-4 py-2 rounded-lg border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400 pr-10" />
                     <button type="button" id="clear-search-btn" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500 focus:outline-none" style="display: none;">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
@@ -101,53 +106,69 @@
             </div>
         </div>
 
-        <!-- Conferences Grid -->
+        <!-- Conferences Horizontal Scroll -->
         {% if conferences %}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {% for conference in conferences %}
-                    <div class="bg-white rounded-xl shadow-lg p-6 border border-blue-100 flex flex-col justify-between hover:scale-105 hover:shadow-2xl transition-all duration-300">
-                        <div>
-                            <div class="flex justify-between items-center mb-3">
+            <div class="bg-white rounded-xl shadow-lg p-8 border border-blue-100">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Available Conferences</h2>
+                <div class="relative">
+                    <!-- Left Arrow -->
+                    <button id="scroll-left" class="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-lg border border-gray-200 hover:bg-gray-50 transition-all duration-200">
+                        <i class="fas fa-chevron-left text-gray-600"></i>
+                    </button>
+                    
+                    <!-- Right Arrow -->
+                    <button id="scroll-right" class="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-lg border border-gray-200 hover:bg-gray-50 transition-all duration-200">
+                        <i class="fas fa-chevron-right text-gray-600"></i>
+                    </button>
+                    
+                    <!-- Conferences Container -->
+                    <div id="conferences-container" class="flex gap-6 overflow-x-auto scrollbar-hide px-4 py-2" style="scroll-behavior: smooth;">
+                        {% for conference in conferences %}
+                            <div class="bg-white rounded-xl shadow-lg p-6 border border-blue-100 flex flex-col justify-between min-w-[350px] max-w-[350px] hover:scale-105 hover:shadow-2xl transition-all duration-300">
                                 <div>
-                                    <h3 class="text-xl font-bold text-blue-800 mb-1">{{ conference.acronym|default:conference.name|truncatechars:20 }}</h3>
-                                    <p class="text-blue-400 text-sm">{{ conference.name|truncatechars:40 }}</p>
-                                </div>
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold
-                                    {% if conference.status == 'upcoming' %}bg-yellow-100 text-yellow-800
-                                    {% elif conference.status == 'live' %}bg-green-100 text-green-800
-                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
-                                    {{ conference.status|title }}
-                                </span>
-                            </div>
-                            <div class="flex items-center text-blue-400 text-sm mb-2">
-                                <i class="fas fa-map-marker-alt mr-2"></i>
-                                <span>{{ conference.venue|default:"TBD" }}{% if conference.city %}, {{ conference.city }}{% endif %}</span>
-                            </div>
-                            <div class="mb-4">
-                                <div class="flex items-center text-gray-600 text-sm mb-2">
-                                    <i class="fas fa-calendar mr-2"></i>
-                                    <span>{{ conference.start_date|date:"M d" }} - {{ conference.end_date|date:"M d, Y" }}</span>
-                                </div>
-                                <div class="flex items-center text-gray-600 text-sm mb-2">
-                                    <i class="fas fa-tag mr-2"></i>
-                                    <span>{{ conference.get_primary_area_display }}</span>
-                                </div>
-                                {% if conference.description %}
-                                    <p class="text-gray-600 text-sm">{{ conference.description|truncatechars:100 }}</p>
-                                {% endif %}
-                            </div>
-                            <div class="flex space-x-2 mt-auto">
-                                {% if conference.chair.id == user.id or 'pc_member' in conference.user_roles or 'author' in conference.user_roles %}
-                                    <a href="/conference/{{ conference.id }}/choose-role/" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-full px-4 py-2 shadow transition-all duration-200 text-center">Go</a>
-                                {% else %}
-                                    <div class="w-full text-center py-2 px-4 rounded-full text-sm font-medium bg-gray-100 text-gray-500">
-                                        <i class="fas fa-info-circle mr-1"></i>Contact chair for invitation
+                                    <div class="flex justify-between items-center mb-3">
+                                        <div>
+                                            <h3 class="text-xl font-bold text-blue-800 mb-1">{{ conference.acronym|default:conference.name|truncatechars:20 }}</h3>
+                                            <p class="text-blue-400 text-sm">{{ conference.name|truncatechars:40 }}</p>
+                                        </div>
+                                        <span class="px-3 py-1 rounded-full text-xs font-semibold
+                                            {% if conference.status == 'upcoming' %}bg-yellow-100 text-yellow-800
+                                            {% elif conference.status == 'live' %}bg-green-100 text-green-800
+                                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                            {{ conference.status|title }}
+                                        </span>
                                     </div>
-                                {% endif %}
+                                    <div class="flex items-center text-blue-400 text-sm mb-2">
+                                        <i class="fas fa-map-marker-alt mr-2"></i>
+                                        <span>{{ conference.venue|default:"TBD" }}{% if conference.city %}, {{ conference.city }}{% endif %}</span>
+                                    </div>
+                                    <div class="mb-4">
+                                        <div class="flex items-center text-gray-600 text-sm mb-2">
+                                            <i class="fas fa-calendar mr-2"></i>
+                                            <span>{{ conference.start_date|date:"M d" }} - {{ conference.end_date|date:"M d, Y" }}</span>
+                                        </div>
+                                        <div class="flex items-center text-gray-600 text-sm mb-2">
+                                            <i class="fas fa-tag mr-2"></i>
+                                            <span>{{ conference.get_primary_area_display }}</span>
+                                        </div>
+                                        {% if conference.description %}
+                                            <p class="text-gray-600 text-sm">{{ conference.description|truncatechars:100 }}</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex space-x-2 mt-auto">
+                                        {% if conference.chair.id == user.id or 'pc_member' in conference.user_roles or 'author' in conference.user_roles %}
+                                            <a href="/conference/{{ conference.id }}/choose-role/" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-full px-4 py-2 shadow transition-all duration-200 text-center">Go</a>
+                                        {% else %}
+                                            <div class="w-full text-center py-2 px-4 rounded-full text-sm font-medium bg-gray-100 text-gray-500">
+                                                <i class="fas fa-info-circle mr-1"></i>Contact chair for invitation
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        {% endfor %}
                     </div>
-                {% endfor %}
+                </div>
             </div>
         {% else %}
             <!-- Empty State -->
@@ -193,11 +214,25 @@
         </div>
     </footer>
 
+    <style>
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+
     <script>
         const searchInput = document.getElementById('search-input');
         const clearBtn = document.getElementById('clear-search-btn');
         const resultsContainer = document.getElementById('search-results-container');
+        const conferencesContainer = document.getElementById('conferences-container');
+        const scrollLeftBtn = document.getElementById('scroll-left');
+        const scrollRightBtn = document.getElementById('scroll-right');
 
+        // Search functionality
         searchInput.addEventListener('input', function() {
             if (searchInput.value.length > 0) {
                 clearBtn.style.display = '';
@@ -249,6 +284,37 @@
                 resultsContainer.innerHTML = '<div class="bg-white rounded-xl shadow-lg p-6 border border-blue-100 mb-8 max-w-4xl mx-auto text-center"><p class="text-red-600">Error occurred while searching. Please try again.</p></div>';
             });
         });
+
+        // Horizontal scroll functionality
+        if (conferencesContainer && scrollLeftBtn && scrollRightBtn) {
+            const scrollAmount = 400; // Adjust scroll amount as needed
+
+            scrollLeftBtn.addEventListener('click', function() {
+                conferencesContainer.scrollBy({
+                    left: -scrollAmount,
+                    behavior: 'smooth'
+                });
+            });
+
+            scrollRightBtn.addEventListener('click', function() {
+                conferencesContainer.scrollBy({
+                    left: scrollAmount,
+                    behavior: 'smooth'
+                });
+            });
+
+            // Show/hide arrows based on scroll position
+            conferencesContainer.addEventListener('scroll', function() {
+                const isAtStart = conferencesContainer.scrollLeft === 0;
+                const isAtEnd = conferencesContainer.scrollLeft + conferencesContainer.clientWidth >= conferencesContainer.scrollWidth;
+
+                scrollLeftBtn.style.display = isAtStart ? 'none' : 'block';
+                scrollRightBtn.style.display = isAtEnd ? 'none' : 'block';
+            });
+
+            // Initial arrow visibility
+            conferencesContainer.dispatchEvent(new Event('scroll'));
+        }
     </script>
 </body>
 </html> 

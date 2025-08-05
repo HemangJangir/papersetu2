@@ -318,21 +318,41 @@ def conferences_list(request):
     """List all available conferences that the user can view"""
     search_query = request.GET.get('search', '')
     area_filter = request.GET.get('area', '')
-    # Only show conferences where user is chair, pc_member, or author
-    conferences = Conference.objects.filter(
+    
+    # Show all approved conferences for new users, or conferences where user has a role
+    user_conferences = Conference.objects.filter(
         Q(chair=request.user) |
         Q(userconferencerole__user=request.user, userconferencerole__role__in=['author', 'pc_member'])
-    ).distinct().filter(is_approved=True, status__in=['upcoming', 'live'])
-    # Apply search filter
+    ).distinct()
+    
+    # Get all available conferences
+    all_conferences = Conference.objects.filter(is_approved=True, status__in=['upcoming', 'live'])
+    
+    # If user has no conferences, show all available conferences
+    if not user_conferences.exists():
+        conferences = all_conferences
+    else:
+        conferences = user_conferences.filter(is_approved=True, status__in=['upcoming', 'live'])
+    
+    # Apply search filter with improved search fields
     if search_query:
         conferences = conferences.filter(
             Q(name__icontains=search_query) | 
             Q(acronym__icontains=search_query) |
-            Q(description__icontains=search_query)
+            Q(description__icontains=search_query) |
+            Q(theme_domain__icontains=search_query) |
+            Q(venue__icontains=search_query) |
+            Q(city__icontains=search_query) |
+            Q(country__icontains=search_query) |
+            Q(chair__first_name__icontains=search_query) |
+            Q(chair__last_name__icontains=search_query) |
+            Q(chair__username__icontains=search_query)
         )
+    
     # Apply area filter
     if area_filter:
         conferences = conferences.filter(primary_area=area_filter)
+    
     # Add user role information
     for conference in conferences:
         conference.user_roles = UserConferenceRole.objects.filter(
@@ -341,6 +361,7 @@ def conferences_list(request):
         ).values_list('role', flat=True)
         if conference.chair == request.user and 'chair' not in conference.user_roles:
             conference.user_roles = list(conference.user_roles) + ['chair']
+    
     from .models import AREA_CHOICES
     context = {
         'conferences': conferences,
@@ -680,7 +701,7 @@ def author_papers_view(request, conference_id):
 
 def search_conferences(request):
     """
-    Search for conferences by theme, venue, city, country, title, or acronym.
+    Search for conferences by theme, venue, city, country, title, acronym, organizer name, or conference topic.
     """
     from django.db.models import Q
     query = request.GET.get('q', '').strip()
@@ -692,7 +713,11 @@ def search_conferences(request):
             Q(theme_domain__icontains=query) |
             Q(venue__icontains=query) |
             Q(city__icontains=query) |
-            Q(country__icontains=query)
+            Q(country__icontains=query) |
+            Q(chair__first_name__icontains=query) |
+            Q(chair__last_name__icontains=query) |
+            Q(chair__username__icontains=query) |
+            Q(description__icontains=query)
         )
     # Use homepage logic for my_conferences
     if request.user.is_authenticated:
