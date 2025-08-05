@@ -319,20 +319,8 @@ def conferences_list(request):
     search_query = request.GET.get('search', '')
     area_filter = request.GET.get('area', '')
     
-    # Show all approved conferences for new users, or conferences where user has a role
-    user_conferences = Conference.objects.filter(
-        Q(chair=request.user) |
-        Q(userconferencerole__user=request.user, userconferencerole__role__in=['author', 'pc_member'])
-    ).distinct()
-    
-    # Get all available conferences
-    all_conferences = Conference.objects.filter(is_approved=True, status__in=['upcoming', 'live'])
-    
-    # If user has no conferences, show all available conferences
-    if not user_conferences.exists():
-        conferences = all_conferences
-    else:
-        conferences = user_conferences.filter(is_approved=True, status__in=['upcoming', 'live'])
+    # Show ALL available conferences for ALL users
+    conferences = Conference.objects.filter(is_approved=True, status__in=['upcoming', 'live'])
     
     # Apply search filter with improved search fields
     if search_query:
@@ -353,7 +341,7 @@ def conferences_list(request):
     if area_filter:
         conferences = conferences.filter(primary_area=area_filter)
     
-    # Add user role information
+    # Add user role information for each conference
     for conference in conferences:
         conference.user_roles = UserConferenceRole.objects.filter(
             user=request.user, 
