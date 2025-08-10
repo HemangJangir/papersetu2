@@ -317,29 +317,46 @@ def join_conference(request, invite_link):
 def conferences_list(request):
     """List all available conferences that the user can view"""
     search_query = request.GET.get('search', '')
-    area_filter = request.GET.get('area', '')
     
     # Show ALL available conferences for ALL users
     conferences = Conference.objects.filter(is_approved=True, status__in=['upcoming', 'live'])
     
-    # Apply search filter with improved search fields
+    # Apply search filter with improved search fields including primary and secondary areas
     if search_query:
-        conferences = conferences.filter(
-            Q(name__icontains=search_query) | 
-            Q(acronym__icontains=search_query) |
-            Q(description__icontains=search_query) |
-            Q(theme_domain__icontains=search_query) |
-            Q(venue__icontains=search_query) |
-            Q(city__icontains=search_query) |
-            Q(country__icontains=search_query) |
-            Q(chair__first_name__icontains=search_query) |
-            Q(chair__last_name__icontains=search_query) |
-            Q(chair__username__icontains=search_query)
-        )
-    
-    # Apply area filter
-    if area_filter:
-        conferences = conferences.filter(primary_area=area_filter)
+        # Get area codes that match the query (case-insensitive + fuzzy matching)
+        from .models import AREA_CHOICES
+        from fuzzywuzzy import fuzz
+        
+        matching_area_codes = []
+        
+        for area_code, area_name in AREA_CHOICES:
+            # Exact match (case-insensitive)
+            if search_query.lower() in area_name.lower():
+                matching_area_codes.append(area_code)
+            # Fuzzy match for spelling mistakes (threshold: 70% similarity)
+            elif fuzz.partial_ratio(search_query.lower(), area_name.lower()) >= 70:
+                matching_area_codes.append(area_code)
+        
+        # Build the search query
+        search_filters = Q(name__icontains=search_query) | \
+                        Q(acronym__icontains=search_query) | \
+                        Q(description__icontains=search_query) | \
+                        Q(theme_domain__icontains=search_query) | \
+                        Q(venue__icontains=search_query) | \
+                        Q(city__icontains=search_query) | \
+                        Q(country__icontains=search_query) | \
+                        Q(chair__first_name__icontains=search_query) | \
+                        Q(chair__last_name__icontains=search_query) | \
+                        Q(chair__username__icontains=search_query) | \
+                        Q(area_notes__icontains=search_query) | \
+                        Q(organizer__icontains=search_query)
+        
+        # Add area filters if we found matching area codes
+        if matching_area_codes:
+            area_filters = Q(primary_area__in=matching_area_codes) | Q(secondary_area__in=matching_area_codes)
+            search_filters |= area_filters
+        
+        conferences = conferences.filter(search_filters)
     
     # Add user role information for each conference
     for conference in conferences:
@@ -350,12 +367,9 @@ def conferences_list(request):
         if conference.chair == request.user and 'chair' not in conference.user_roles:
             conference.user_roles = list(conference.user_roles) + ['chair']
     
-    from .models import AREA_CHOICES
     context = {
         'conferences': conferences,
         'search_query': search_query,
-        'area_filter': area_filter,
-        'area_choices': AREA_CHOICES,
     }
     return render(request, 'conference/conferences_list.html', context)
 
@@ -689,24 +703,47 @@ def author_papers_view(request, conference_id):
 
 def search_conferences(request):
     """
-    Search for conferences by theme, venue, city, country, title, acronym, organizer name, or conference topic.
+    Search for conferences by theme, venue, city, country, title, acronym, organizer name, conference topic, primary area, and secondary area.
     """
     from django.db.models import Q
+    from fuzzywuzzy import fuzz
+    
     query = request.GET.get('q', '').strip()
     conferences = Conference.objects.filter(is_approved=True, status__in=['upcoming', 'live'])
+    
     if query:
-        conferences = conferences.filter(
-            Q(name__icontains=query) |
-            Q(acronym__icontains=query) |
-            Q(theme_domain__icontains=query) |
-            Q(venue__icontains=query) |
-            Q(city__icontains=query) |
-            Q(country__icontains=query) |
-            Q(chair__first_name__icontains=query) |
-            Q(chair__last_name__icontains=query) |
-            Q(chair__username__icontains=query) |
-            Q(description__icontains=query)
-        )
+        # Get area codes that match the query (case-insensitive + fuzzy matching)
+        from .models import AREA_CHOICES
+        matching_area_codes = []
+        
+        for area_code, area_name in AREA_CHOICES:
+            # Exact match (case-insensitive)
+            if query.lower() in area_name.lower():
+                matching_area_codes.append(area_code)
+            # Fuzzy match for spelling mistakes (threshold: 70% similarity)
+            elif fuzz.partial_ratio(query.lower(), area_name.lower()) >= 70:
+                matching_area_codes.append(area_code)
+        
+        # Build the search query
+        search_filters = Q(name__icontains=query) | \
+                        Q(acronym__icontains=query) | \
+                        Q(theme_domain__icontains=query) | \
+                        Q(venue__icontains=query) | \
+                        Q(city__icontains=query) | \
+                        Q(country__icontains=query) | \
+                        Q(chair__first_name__icontains=query) | \
+                        Q(chair__last_name__icontains=query) | \
+                        Q(chair__username__icontains=query) | \
+                        Q(description__icontains=query) | \
+                        Q(area_notes__icontains=query)
+        
+        # Add area filters if we found matching area codes
+        if matching_area_codes:
+            area_filters = Q(primary_area__in=matching_area_codes) | Q(secondary_area__in=matching_area_codes)
+            search_filters |= area_filters
+        
+        conferences = conferences.filter(search_filters)
+    
     # Use homepage logic for my_conferences
     if request.user.is_authenticated:
         my_conferences = Conference.objects.filter(
@@ -746,7 +783,6 @@ def role_based_dashboard(request, conference_id):
 def browse_conferences(request):
     # Get search parameters
     search_query = request.GET.get('q', '')
-    area_filter = request.GET.get('area', '')
     
     # Get conferences
     conferences = Conference.objects.filter(
@@ -754,19 +790,38 @@ def browse_conferences(request):
         status__in=['upcoming', 'live']
     ).order_by('start_date')
     
-    # Apply search filter
+    # Apply search filter with enhanced fields including primary and secondary areas
     if search_query:
-        conferences = conferences.filter(
-            Q(name__icontains=search_query) |
-            Q(acronym__icontains=search_query) |
-            Q(venue__icontains=search_query) |
-            Q(city__icontains=search_query) |
-            Q(primary_area__icontains=search_query)
-        )
-    
-    # Apply area filter
-    if area_filter:
-        conferences = conferences.filter(primary_area=area_filter)
+        # Get area codes that match the query (case-insensitive + fuzzy matching)
+        from .models import AREA_CHOICES
+        from fuzzywuzzy import fuzz
+        
+        matching_area_codes = []
+        
+        for area_code, area_name in AREA_CHOICES:
+            # Exact match (case-insensitive)
+            if search_query.lower() in area_name.lower():
+                matching_area_codes.append(area_code)
+            # Fuzzy match for spelling mistakes (threshold: 70% similarity)
+            elif fuzz.partial_ratio(search_query.lower(), area_name.lower()) >= 70:
+                matching_area_codes.append(area_code)
+        
+        # Build the search query
+        search_filters = Q(name__icontains=search_query) | \
+                        Q(acronym__icontains=search_query) | \
+                        Q(venue__icontains=search_query) | \
+                        Q(city__icontains=search_query) | \
+                        Q(country__icontains=search_query) | \
+                        Q(description__icontains=search_query) | \
+                        Q(area_notes__icontains=search_query) | \
+                        Q(organizer__icontains=search_query)
+        
+        # Add area filters if we found matching area codes
+        if matching_area_codes:
+            area_filters = Q(primary_area__in=matching_area_codes) | Q(secondary_area__in=matching_area_codes)
+            search_filters |= area_filters
+        
+        conferences = conferences.filter(search_filters)
     
     # Add display status for ongoing conferences
     today = timezone.now().date()
@@ -776,15 +831,9 @@ def browse_conferences(request):
         else:
             conference.display_status = conference.status
     
-    # Get area choices for filter dropdown
-    from .models import AREA_CHOICES
-    area_choices = AREA_CHOICES
-    
     context = {
         'search_results': conferences,
         'search_query': search_query,
-        'area_filter': area_filter,
-        'area_choices': area_choices,
     }
     
     return render(request, 'conference/browse_conferences.html', context)
